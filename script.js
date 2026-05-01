@@ -31,8 +31,22 @@ const reports = [
   { id: 'WR-1037', client: 'عبدالله ر.', type: 'قيم شخصية', date: '2026-02-05', progress: 76, status: 'مراجعة' }
 ];
 
+const canUseHistoryRouting = window.location.protocol !== 'about:' && window.location.origin !== 'null';
+
+function normalizeRoute(path) {
+  if (!path || path === '/index.html' || path === 'index.html' || path === 'srcdoc') return '/';
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+function getCurrentRoute() {
+  if (!canUseHistoryRouting && window.location.hash.startsWith('#/')) {
+    return normalizeRoute(window.location.hash.slice(1));
+  }
+  return normalizeRoute(window.location.pathname);
+}
+
 const state = {
-  route: window.location.pathname === '/index.html' ? '/' : window.location.pathname,
+  route: getCurrentRoute(),
   page: 1,
   filter: 'الكل',
   sort: 'rating',
@@ -45,8 +59,21 @@ const defaultLogoDataUri = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
 const logoStorageKey = 'adrekUploadedLogo';
 
 function navigate(path) {
-  if (window.location.pathname !== path) history.pushState({}, '', path);
-  state.route = path;
+  const nextRoute = normalizeRoute(path);
+  if (getCurrentRoute() !== nextRoute) {
+    try {
+      if (canUseHistoryRouting) {
+        history.pushState({}, '', nextRoute);
+      } else if (window.location.hash !== `#${nextRoute}`) {
+        window.location.hash = nextRoute;
+      }
+    } catch (error) {
+      if (window.location.hash !== `#${nextRoute}`) {
+        window.location.hash = nextRoute;
+      }
+    }
+  }
+  state.route = nextRoute;
   state.page = 1;
   render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -298,7 +325,13 @@ window.openCoach = openCoach;
 window.bookCoach = bookCoach;
 window.showToast = showToast;
 
-window.addEventListener('popstate', () => { state.route = window.location.pathname; render(); });
+window.addEventListener('popstate', () => { state.route = getCurrentRoute(); render(); });
+window.addEventListener('hashchange', () => {
+  if (!canUseHistoryRouting) {
+    state.route = getCurrentRoute();
+    render();
+  }
+});
 document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('navLinks').classList.toggle('hidden'));
 
 document.addEventListener('DOMContentLoaded', () => {
