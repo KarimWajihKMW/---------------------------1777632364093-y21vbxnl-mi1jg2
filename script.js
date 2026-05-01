@@ -15,9 +15,26 @@ const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
 const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
-const CHIP_ANIMATION_DELAY_STEP = 0.12;
-const HERO_CHIP_LABELS = ['ألوان هادئة مريحة', 'تجربة متوافقة مع الجوال', 'حجز وتقارير وحركة حية', 'رحلات علاجية وتطويرية مترابطة'];
-const HOME_MOTION_LABELS = ['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة'];
+const BOOKING_STORAGE_KEY = 'adrek-confirmed-bookings';
+const BOOKING_METHODS = [
+  { id: 'video', label: 'جلسة مرئية', icon: '🎥', description: 'رابط اجتماع آمن يرسل بعد التأكيد مع تذكير قبل الموعد.' },
+  { id: 'voice', label: 'اتصال فقط', icon: '📞', description: 'اتصال صوتي خاص لمن يفضل الخصوصية أو ضعف الاتصال المرئي.' }
+];
+const BOOKING_SESSION_TYPES = ['إرشاد نفسي', 'كوتشينج مهني', 'إرشاد أسري', 'تطوير ذات', 'كوتشينج علاقات'];
+const BOOKING_TIME_SLOTS = ['09:00', '10:30', '12:00', '16:00', '17:30', '19:00', '20:30'];
+const DEFAULT_BOOKING_DRAFT = {
+  sessionType: 'إرشاد نفسي',
+  coachId: '',
+  date: '',
+  time: '',
+  method: 'video',
+  clientName: '',
+  phone: '',
+  email: '',
+  goal: '',
+  reminder: 'رسالة واتساب قبل 24 ساعة',
+  agreement: false
+};
 
 const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const includesTerm = (value = '', term = '') => String(value).toLocaleLowerCase('ar').includes(String(term).toLocaleLowerCase('ar'));
@@ -79,7 +96,10 @@ const state = {
   loading: true,
   loadError: '',
   adminDataLoaded: false,
-  adminLoading: false
+  adminLoading: false,
+  bookingStep: 1,
+  booking: { ...DEFAULT_BOOKING_DRAFT },
+  bookingConfirmation: null
 };
 
 const createSafeStorage = (storageName) => {
@@ -351,70 +371,37 @@ function homePage() {
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
           <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
         </div>
-        <div class="mt-6 flex flex-wrap gap-3">
-          ${HERO_CHIP_LABELS.map((label, index) => heroChip(label, index)).join('')}
-        </div>
-        <div class="mt-10 grid gap-3 text-center sm:max-w-2xl sm:grid-cols-3">
+        <div class="mt-10 grid grid-cols-3 gap-3 text-center sm:max-w-xl">
           ${stat('16K+', 'مستفيد')}${stat('320+', 'مختص معتمد')}${stat('42K+', 'تقرير صادر')}
         </div>
       </div>
-      <div class="grid gap-4 reveal reveal-delay-2">
-        <div class="hero-card rounded-[2.5rem] p-5 md:p-7">
-          <div class="relative z-10 rounded-[2rem] bg-[#f9fbf4]/90 p-5">
-            <div class="mb-5 flex items-center justify-between">
-              <div><p class="text-sm font-bold text-ink/55">لوحة الاتزان اليوم</p><h2 class="font-display text-2xl font-extrabold text-moss">خريطة الرحلة العلاجية</h2></div>
-              <span class="rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">خصوصي</span>
+      <div class="hero-card reveal reveal-delay-2 rounded-[2.5rem] p-5 md:p-7">
+        <div class="relative z-10 rounded-[2rem] bg-[#f9fbf4]/90 p-5">
+          <div class="mb-5 flex items-center justify-between">
+            <div><p class="text-sm font-bold text-ink/55">لوحة الاتزان اليوم</p><h2 class="font-display text-2xl font-extrabold text-moss">خريطة الرحلة العلاجية</h2></div>
+            <span class="rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">خصوصي</span>
+          </div>
+          <div class="grid gap-4 md:grid-cols-[.8fr_1fr]">
+            <div class="relative flex min-h-64 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-mint to-sand/80 p-6">
+              <div class="breath-ring absolute h-40 w-40 rounded-full border border-moss/20"></div>
+              <div class="breath-ring absolute h-28 w-28 rounded-full border border-moss/30" style="animation-delay:.5s"></div>
+              <div class="z-10 text-center"><div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white text-3xl shadow-calm">🌱</div><p class="font-display text-3xl font-extrabold text-moss">82%</p><p class="text-sm font-bold text-ink/60">مؤشر التحسن</p></div>
             </div>
-            <div class="grid gap-4 md:grid-cols-[.8fr_1fr]">
-              <div class="relative flex min-h-64 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-mint to-sand/80 p-6">
-                <div class="breath-ring absolute h-40 w-40 rounded-full border border-moss/20"></div>
-                <div class="breath-ring absolute h-28 w-28 rounded-full border border-moss/30" style="animation-delay:.5s"></div>
-                <div class="z-10 text-center"><div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white text-3xl shadow-calm">🌱</div><p class="font-display text-3xl font-extrabold text-moss">82%</p><p class="text-sm font-bold text-ink/60">مؤشر التحسن</p></div>
-              </div>
-              <div class="space-y-3">
-                ${journey('مقياس أولي', 'اكتمل', 100)}${journey('جلسة كوتشينج', 'اليوم 7:30م', 64)}${journey('تقرير مهني', 'قيد المراجعة', 48)}
-                <div class="rounded-3xl bg-white p-4 shadow-sm"><p class="mb-2 text-sm font-extrabold text-moss">توصية ذكية</p><p class="text-sm leading-7 text-ink/65">ابدأ ببرنامج وضوح المسار مع جلسة متابعة بعد 7 أيام.</p></div>
-              </div>
+            <div class="space-y-3">
+              ${journey('مقياس أولي', 'اكتمل', 100)}${journey('جلسة كوتشينج', 'اليوم 7:30م', 64)}${journey('تقرير مهني', 'قيد المراجعة', 48)}
+              <div class="rounded-3xl bg-white p-4 shadow-sm"><p class="mb-2 text-sm font-extrabold text-moss">توصية ذكية</p><p class="text-sm leading-7 text-ink/65">ابدأ ببرنامج وضوح المسار مع جلسة متابعة بعد 7 أيام.</p></div>
             </div>
           </div>
         </div>
-        <div class="grid gap-4 sm:grid-cols-3">
-          ${pulseCard('جلسات مباشرة', 'مواعيد مرنة وحجز سريع مع مختصين معتمدين.', 0)}${pulseCard('تقارير فورية', 'مؤشرات تقدم مرئية تتحرك مع كل مرحلة من الرحلة.', 1)}${pulseCard('متابعة أسرية', 'تنبيهات ولغة بصرية مريحة على جميع الشاشات.', 2)}
-        </div>
-      </div>
-    </div>
-  </section>
-  <section class="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
-    <div class="marquee-shell rounded-[2rem] border border-white/70 bg-white/65 px-3 py-4 shadow-sm backdrop-blur-xl">
-      <div class="marquee-track">
-        ${HOME_MOTION_LABELS.concat(HOME_MOTION_LABELS).map((label) => motionPill(label)).join('')}
       </div>
     </div>
   </section>
   <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid gap-4 md:grid-cols-4">
       ${feature('🧑‍⚕️', 'حجز مختصين', 'بحث وفرز حسب التخصص والسعر والتقييم مع مواعيد مباشرة.', '/coaches')}
       ${feature('🧩', 'برامج الأطفال', 'برامج نمائية وسلوكية للأطفال والمراهقين بخطط للأسرة والمدرسة.', '/children-programs')}
       ${feature('🎓', 'برامج ودورات', 'دورات تدريبية مباشرة ومسجلة للأفراد والممارسين.', '/courses')}
       ${feature('🏛️', 'برامج قيادية', 'مسارات تطوير قيادي للجهات والمنظمات وفرق العمل.', '/leadership-programs')}
-    </div>
-  </section>
-  <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-    <div class="grid gap-5 lg:grid-cols-[1fr_.95fr]">
-      <div class="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-calm">
-        <span class="inline-flex rounded-full bg-mint px-4 py-2 text-xs font-extrabold text-moss">تجربة متحركة</span>
-        <h2 class="mt-4 font-display text-3xl font-extrabold text-moss">الصفحة الرئيسية أصبحت أكثر حياة ووضوحاً</h2>
-        <div class="mt-6 grid gap-4 sm:grid-cols-2">
-          ${experiencePoint('بطاقات نابضة', 'حركة خفيفة ومتواصلة تجعل الواجهة نشطة بدون إزعاج.')}
-          ${experiencePoint('تجاوب كامل', 'العناصر تتكدس بسلاسة على الشاشات الصغيرة مع مساحات مريحة للمس.')}
-          ${experiencePoint('ألوان مترابطة', 'تدرجات أخضر وبيج موحدة في الأزرار والعناوين والشرائط.')}
-          ${experiencePoint('دعوات واضحة', 'النصوص داخل الأزرار والتبويبات أصبحت أوضح وأعلى تبايناً.')}
-        </div>
-      </div>
-      <div class="grid gap-4">
-        ${floatingInsight('جاهزية الجوال', 'تخطيط مرن وأزرار واضحة ومقروءة في الهواتف.')}
-        ${floatingInsight('رحلة مترابطة', 'من الحجز إلى التقرير كل العناصر تحمل نفس الهوية الهادئة.')}
-      </div>
     </div>
   </section>
   <section class="bg-moss py-16 text-white">
@@ -426,12 +413,7 @@ function homePage() {
 }
 
 function stat(number, label) { return `<div class="rounded-3xl border border-white/70 bg-white/60 p-4 shadow-sm"><p class="font-display text-2xl font-extrabold text-moss">${number}</p><p class="text-xs font-bold text-ink/55">${label}</p></div>`; }
-function heroChip(label, index) { return `<span class="hero-chip rounded-full border border-moss/10 bg-white/80 px-4 py-3 text-sm font-extrabold text-moss shadow-sm" style="animation-delay:${index * CHIP_ANIMATION_DELAY_STEP}s">${label}</span>`; }
 function journey(title, meta, value) { return `<div class="rounded-3xl bg-white p-4 shadow-sm"><div class="mb-2 flex justify-between text-sm"><b class="text-moss">${title}</b><span class="text-ink/55">${meta}</span></div><div class="h-2 rounded-full bg-mint"><div class="progress-wave h-2 rounded-full" style="width:${value}%"></div></div></div>`; }
-function pulseCard(title, text, index) { return `<div class="pulse-card rounded-[1.8rem] border border-white/70 bg-white/70 p-5 shadow-sm" style="animation-delay:${index * 0.4}s"><p class="text-sm font-extrabold text-clay">${title}</p><p class="mt-2 leading-7 text-ink/65">${text}</p></div>`; }
-function motionPill(label) { return `<span class="motion-pill rounded-full border border-moss/10 bg-[#f4efe2] px-4 py-2 text-sm font-extrabold text-moss">${label}</span>`; }
-function experiencePoint(title, text) { return `<div class="rounded-[1.6rem] bg-[#f7f1e4] p-4"><h3 class="font-display text-lg font-extrabold text-moss">${title}</h3><p class="mt-2 text-sm leading-7 text-ink/65">${text}</p></div>`; }
-function floatingInsight(title, text) { return `<div class="floating-insight rounded-[1.9rem] border border-white/70 bg-white/75 p-5 shadow-calm"><span class="inline-flex rounded-full bg-mint px-3 py-1 text-xs font-extrabold text-moss">إضاءة</span><h3 class="mt-4 font-display text-2xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-8 text-ink/65">${text}</p></div>`; }
 function feature(icon, title, text, route) { return `<a href="${route}" data-route="${route}" class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/65 p-6 shadow-sm backdrop-blur-xl"><span class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-mint text-2xl">${icon}</span><h3 class="font-display text-xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-7 text-ink/62">${text}</p></a>`; }
 function step(num, title, text) { return `<div class="rounded-[2rem] border border-white/15 bg-white/10 p-6"><span class="text-sm font-extrabold text-sand">${num}</span><h3 class="mt-3 font-display text-xl font-extrabold">${title}</h3><p class="mt-3 leading-7 text-white/70">${text}</p></div>`; }
 
@@ -593,10 +575,89 @@ function reportRow(report) {
   return `<tr class="border-t border-moss/10"><td class="p-4 font-bold text-moss">${report.id}</td><td class="p-4">${report.client}</td><td class="p-4">${report.type}</td><td class="p-4">${report.date}</td><td class="p-4"><div class="h-2 w-28 rounded-full bg-mint"><div class="progress-wave h-2 rounded-full" style="width:${report.progress}%"></div></div></td><td class="p-4"><span class="rounded-full bg-sand/70 px-3 py-1 text-xs font-bold text-moss">${report.status}</span></td><td class="p-4"><div class="flex gap-2"><button onclick="showToast('عرض ${report.id}')" class="table-action rounded-xl bg-moss px-3 py-2 text-xs font-bold text-white">عرض</button><button onclick="showToast('تحرير ${report.id}')" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">تعديل</button><button onclick="showToast('إصدار PDF')" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">إصدار</button><button onclick="showToast('تم حذف المسودة')" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`;
 }
 
+function getStoredBookings() {
+  try { const value = JSON.parse(adrekStorage.local.getItem(BOOKING_STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch (error) { return []; }
+}
+function saveStoredBookings(items) { adrekStorage.local.setItem(BOOKING_STORAGE_KEY, JSON.stringify(items.slice(0, 30))); }
+function bookingCoach() { return coaches.find((coach) => String(coach.id) === String(state.booking.coachId)) || null; }
+function bookingMethod() { return BOOKING_METHODS.find((method) => method.id === state.booking.method) || BOOKING_METHODS[0]; }
+function formatBookingDate(value, compact = false) {
+  if (!value) return 'لم يحدد بعد';
+  const date = value instanceof Date ? value : new Date(`${value}T00:00:00`);
+  return date.toLocaleDateString('ar-SA', compact ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function bookingDates() {
+  const dates = [];
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  while (dates.length < 10) { date.setDate(date.getDate() + 1); if (date.getDay() !== 5) dates.push(new Date(date)); }
+  return dates;
+}
+function bookingSlots(coachId, date) {
+  const reserved = getStoredBookings().filter((item) => String(item.coachId) === String(coachId) && item.date === date).map((item) => item.time);
+  return BOOKING_TIME_SLOTS.map((time, index) => ({ time, disabled: (index + (Number(coachId) || 1)) % 5 === 0 || reserved.includes(time) }));
+}
+function bookingStepError(step) {
+  const draft = state.booking;
+  if (step >= 2 && (!draft.sessionType || !draft.coachId)) return 'اختر نوع الاستشارة والمختص أولاً.';
+  if (step >= 3 && (!draft.date || !draft.time)) return 'حدد اليوم والوقت المناسبين.';
+  if (step >= 4 && (!draft.clientName.trim() || !draft.phone.trim() || !draft.email.trim() || !draft.agreement)) return 'أكمل بيانات التواصل ووافق على سياسة الحجز.';
+  return '';
+}
+function setBookingStep(step) {
+  const error = bookingStepError(step - 1);
+  if (error) return showToast(error);
+  state.bookingStep = Math.min(Math.max(step, 1), 4);
+  render();
+}
+function updateBookingField(field, value) {
+  state.booking[field] = field === 'agreement' ? Boolean(value) : value;
+  if (field === 'sessionType') Object.assign(state.booking, { coachId: '', date: '', time: '' });
+  if (field === 'coachId') { const coach = bookingCoach(); if (coach) state.booking.sessionType = coach.specialty; Object.assign(state.booking, { date: '', time: '' }); }
+  render();
+}
+function chooseBookingSlot(date, time) { Object.assign(state.booking, { date, time }); state.bookingStep = 3; render(); }
 function bookingPage() {
-  return shell('حجز جلسة جديدة', 'نموذج حجز سريع يربط المستفيد بالمختص المناسب مع اختيار نوع الجلسة والوقت.', `
-    <form class="mx-auto max-w-3xl rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); showToast('تم تأكيد طلب الحجز')"><div class="grid gap-4 md:grid-cols-2"><select class="rounded-2xl border border-moss/10 px-4 py-3"><option>إرشاد نفسي</option><option>كوتشينج مهني</option><option>إرشاد أسري</option><option>تطوير ذات</option></select><select class="rounded-2xl border border-moss/10 px-4 py-3">${coaches.map((coach) => `<option>${coach.name}</option>`).join('')}</select><input type="date" class="rounded-2xl border border-moss/10 px-4 py-3"><input type="time" class="rounded-2xl border border-moss/10 px-4 py-3"><textarea class="min-h-32 rounded-2xl border border-moss/10 px-4 py-3 md:col-span-2" placeholder="ما الهدف من الجلسة؟"></textarea><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white transition hover:-translate-y-1 md:col-span-2">تأكيد الحجز</button></div></form>
-  `, 'حجز آمن');
+  const draft = state.booking;
+  const coach = bookingCoach();
+  const method = bookingMethod();
+  const candidates = coaches.filter((item) => item.specialty === draft.sessionType || (draft.sessionType === 'تطوير ذات' && item.specialty.includes('تطوير')));
+  const stepper = ['المختص', 'التاريخ والوقت', 'النوع والبيانات', 'التأكيد'].map((label, index) => `<button type="button" onclick="setBookingStep(${index + 1})" class="rounded-2xl px-4 py-3 font-extrabold ${state.bookingStep === index + 1 ? 'bg-moss text-white shadow-leaf' : 'bg-white/75 text-moss'}">${index + 1}. ${label}</button>`).join('');
+  let body = '';
+  if (state.bookingStep === 1) body = `<select onchange="updateBookingField('sessionType', this.value)" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${BOOKING_SESSION_TYPES.map((type) => `<option ${draft.sessionType === type ? 'selected' : ''}>${type}</option>`).join('')}</select><div class="mt-4 grid gap-3 md:grid-cols-2">${(candidates.length ? candidates : coaches).map((item) => `<button type="button" onclick="updateBookingField('coachId','${item.id}'); setBookingStep(2)" class="rounded-2xl border p-4 text-right ${String(draft.coachId) === String(item.id) ? 'border-moss bg-mint' : 'border-moss/10 bg-white'}"><b class="text-moss">${item.image} ${item.name}</b><p class="mt-1 text-sm text-ink/60">${item.specialty} · ★ ${item.rating} · ${item.price} ر.س</p></button>`).join('')}</div>`;
+  if (state.bookingStep === 2) body = `<div class="grid gap-3 md:grid-cols-5">${bookingDates().map((date) => { const value = date.toISOString().slice(0, 10); return `<button onclick="state.booking.date='${value}'; state.booking.time=''; render()" class="rounded-2xl px-3 py-4 font-extrabold ${draft.date === value ? 'bg-moss text-white' : 'bg-white text-moss'}">${formatBookingDate(date, true)}</button>`; }).join('')}</div><div class="mt-5 grid gap-3 md:grid-cols-4">${draft.date ? bookingSlots(draft.coachId, draft.date).map((slot) => `<button ${slot.disabled ? 'disabled' : ''} onclick="chooseBookingSlot('${draft.date}','${slot.time}')" class="rounded-2xl px-4 py-3 font-extrabold ${slot.disabled ? 'bg-ink/10 text-ink/35' : draft.time === slot.time ? 'bg-moss text-white' : 'bg-mint text-moss'}">${slot.time}</button>`).join('') : '<p class="rounded-2xl bg-mint/55 p-4 font-bold text-ink/60">اختر تاريخاً لعرض الأوقات المتاحة.</p>'}</div>`;
+  if (state.bookingStep === 3) body = `<div class="grid gap-3 md:grid-cols-2">${BOOKING_METHODS.map((item) => `<button onclick="updateBookingField('method','${item.id}')" class="rounded-2xl border p-4 text-right ${draft.method === item.id ? 'border-moss bg-mint' : 'border-moss/10 bg-white'}"><b class="text-moss">${item.icon} ${item.label}</b><p class="mt-1 text-sm text-ink/60">${item.description}</p></button>`).join('')}</div><div class="mt-5 grid gap-3 md:grid-cols-2"><input oninput="state.booking.clientName=this.value" value="${escapeHTML(draft.clientName)}" placeholder="الاسم الكامل" class="rounded-2xl border border-moss/10 px-4 py-3"><input oninput="state.booking.phone=this.value" value="${escapeHTML(draft.phone)}" placeholder="رقم الجوال" class="rounded-2xl border border-moss/10 px-4 py-3"><input oninput="state.booking.email=this.value" value="${escapeHTML(draft.email)}" placeholder="البريد الإلكتروني" class="rounded-2xl border border-moss/10 px-4 py-3"><select onchange="state.booking.reminder=this.value" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option>رسالة واتساب قبل 24 ساعة</option><option>بريد إلكتروني قبل 24 ساعة</option><option>بدون تذكير</option></select><textarea oninput="state.booking.goal=this.value" class="min-h-28 rounded-2xl border border-moss/10 px-4 py-3 md:col-span-2" placeholder="ما الهدف من الجلسة؟">${escapeHTML(draft.goal)}</textarea></div><label class="mt-4 flex gap-3 rounded-2xl bg-mint/55 p-4 font-bold text-ink/70"><input type="checkbox" ${draft.agreement ? 'checked' : ''} onchange="state.booking.agreement=this.checked"> أوافق على سياسة الإلغاء والتعديل قبل 12 ساعة.</label>`;
+  if (state.bookingStep === 4) body = `<div class="grid gap-3 md:grid-cols-2">${[['المختص', coach?.name || 'غير محدد'], ['نوع الاستشارة', draft.sessionType], ['الموعد', `${formatBookingDate(draft.date)} · ${draft.time || '-'}`], ['نوع الحجز', method.label], ['المستفيد', draft.clientName || '-'], ['التكلفة', coach ? `${coach.price} ر.س` : '-']].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div><button onclick="confirmBooking()" class="mt-5 w-full rounded-2xl bg-moss px-6 py-4 font-extrabold text-white shadow-leaf">تأكيد الموعد وإصدار رقم الحجز</button>`;
+  const summary = `<div class="rounded-[2rem] bg-moss p-6 text-white"><h3 class="font-display text-2xl font-extrabold">ملخص الحجز</h3><p class="mt-4">${coach ? escapeHTML(coach.name) : 'اختر المستشار'} · ${formatBookingDate(draft.date)} · ${draft.time || 'وقت غير محدد'}</p><p class="mt-2">${method.icon} ${method.label}</p></div>`;
+  return shell('حجز جلسة احترافي عن بعد', 'آلية حجز كاملة: اختيار نوع الاستشارة والمختص، تحديد التاريخ والوقت، اختيار جلسة مرئية أو اتصال فقط، ثم تأكيد الموعد.', `<div class="mb-6 grid gap-3 md:grid-cols-4">${stepper}</div><div class="grid gap-6 lg:grid-cols-[1fr_22rem]"><div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm">${body}<div class="mt-6 flex justify-between"><button onclick="setBookingStep(${Math.max(1, state.bookingStep - 1)})" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">السابق</button><button onclick="setBookingStep(${Math.min(4, state.bookingStep + 1)})" class="rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">التالي</button></div></div>${summary}</div>`, 'مسار الحجز /booking');
+}
+
+function confirmBooking() {
+  const error = bookingStepError(4);
+  const coach = bookingCoach();
+  if (error) return showToast(error);
+  if (!coach) return showToast('اختر مختصاً متاحاً قبل التأكيد.');
+  const item = { ...state.booking, id: `BK-${Date.now().toString().slice(-6)}`, coachId: coach.id, coachName: coach.name, price: coach.price, methodLabel: bookingMethod().label, status: 'مؤكد بانتظار الدفع', createdAt: new Date().toISOString() };
+  saveStoredBookings([item, ...getStoredBookings()]);
+  state.bookingConfirmation = item;
+  state.booking = { ...DEFAULT_BOOKING_DRAFT };
+  state.bookingStep = 1;
+  showToast('تم تأكيد الموعد وإصدار رقم الحجز');
+  navigate('/booking/confirmation');
+}
+
+function resetBooking() {
+  state.booking = { ...DEFAULT_BOOKING_DRAFT };
+  state.bookingStep = 1;
+  state.bookingConfirmation = null;
+  navigate('/booking');
+}
+
+function bookingConfirmationPage() {
+  const item = state.bookingConfirmation || getStoredBookings()[0];
+  if (!item) return shell('لا يوجد حجز مؤكد بعد', 'ابدأ الحجز من صفحة المواعيد لاختيار مستشار وتاريخ ووقت مناسبين.', `<button onclick="resetBooking()" class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">بدء حجز جديد</button>`, 'تأكيد الحجز');
+  const nextSteps = ['استكمال الدفع الآمن لتثبيت الموعد نهائياً.', item.method === 'video' ? 'سيتم إرسال رابط الجلسة المرئية قبل الموعد.' : 'سيتم تثبيت رقم الاتصال الصوتي الخاص بالجلسة.', 'يمكن تعديل الموعد قبل 12 ساعة من بدايته.', 'سيصل تذكير حسب القناة المختارة.'];
+  return shell('تم تأكيد الموعد', 'تم إصدار رقم حجز واضح مع تفاصيل الموعد ونوع الجلسة وخطوات ما بعد الحجز.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(item.status)}</span><h2 class="mt-4 font-display text-4xl font-extrabold text-moss">${escapeHTML(item.id)}</h2><div class="mt-6 grid gap-4 md:grid-cols-2">${[['المستفيد', item.clientName], ['المختص', item.coachName], ['نوع الاستشارة', item.sessionType], ['نوع الحجز', item.methodLabel], ['التاريخ', formatBookingDate(item.date)], ['الوقت', item.time], ['التكلفة', `${item.price} ر.س`], ['التذكير', item.reminder]].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div></div><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">الخطوات التالية</h3><div class="mt-5 grid gap-3">${nextSteps.map((next, index) => `<div class="rounded-2xl bg-white/10 p-4"><b>${index + 1}.</b> ${next}</div>`).join('')}</div><button onclick="resetBooking()" class="mt-5 w-full rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حجز موعد آخر</button></aside></div>`, 'مسار عميق /booking/confirmation');
 }
 
 function loginPage() {
@@ -640,7 +701,7 @@ function render() {
   } else if (base.startsWith('/leadership-programs/')) {
     app.innerHTML = catalogDetailPage(leadershipPrograms.find((program) => program.id === Number(base.split('/').pop())), '/leadership-programs', 'صفحة عميقة للبرامج القيادية', 'طلب عرض');
   } else {
-    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/login': loginPage }[base] || notFoundPage)();
+    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/booking/confirmation': bookingConfirmationPage, '/login': loginPage }[base] || notFoundPage)();
   }
   bindDynamicControls();
 }
@@ -671,6 +732,8 @@ function openCoach(id) { navigate(`/coaches/${id}`); }
 function bookCoach(id) {
   const coach = coaches.find((item) => item.id === id);
   if (!coach) return showToast('تعذر العثور على المختص المطلوب');
+  state.booking = { ...state.booking, coachId: coach.id, sessionType: coach.specialty, date: '', time: '' };
+  state.bookingStep = 2;
   showToast(`تم اختيار ${coach.name} للحجز`);
   setTimeout(() => navigate('/booking'), 600);
 }
@@ -680,6 +743,11 @@ window.openCoach = openCoach;
 window.navigate = navigate;
 window.bookCoach = bookCoach;
 window.showToast = showToast;
+window.setBookingStep = setBookingStep;
+window.updateBookingField = updateBookingField;
+window.chooseBookingSlot = chooseBookingSlot;
+window.confirmBooking = confirmBooking;
+window.resetBooking = resetBooking;
 window.adminCollections = adminCollections;
 window.ADMIN_STATUS_OPTIONS = ADMIN_STATUS_OPTIONS;
 window.OWNER_AUTH_KEY = OWNER_AUTH_KEY;
