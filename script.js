@@ -104,7 +104,7 @@ function homePage() {
     <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-20">
       <div class="reveal">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-moss/10 bg-white/70 px-4 py-2 text-sm font-extrabold text-moss shadow-sm"><span class="h-2 w-2 rounded-full bg-sage"></span> منصة واحدة للمستفيد ومزود الخدمة</span>
-        <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">احجز جلسة كوتشينج أو دعم نفسي أو أسري أو تطوير مهني أو قيادي في مساحة آمنة وبكل خصوصية</h1>
+        <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">جلسات كوتشينج .دعم نفسي وأسري . تطوير مهني وقيادي. برامج نمائية وسلوكية للأطفال والمراهقين .</h1>
         <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">Adrek تجمع المختصين، المنتجات التدريبية الرقمية، برامج المقاييس الشخصية والنفسية، وإصدار تقارير احترافية تساعدك على فهم ذاتك وخطوتك التالية.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
