@@ -123,7 +123,8 @@ const state = {
   booking: { ...DEFAULT_BOOKING_DRAFT },
   bookingConfirmation: null,
   payment: { ...DEFAULT_PAYMENT_DRAFT },
-  paymentProcessing: false
+  paymentProcessing: false,
+  discovery: { answers: {}, result: null }
 };
 
 const createSafeStorage = (storageName) => {
@@ -168,6 +169,8 @@ const adrekStorage = {
 };
 
 window.adrekStorage = adrekStorage;
+window.adrekState = state;
+window.adrekCollections = { coaches, assessments };
 
 const bootstrapCollections = {
   coaches,
@@ -393,6 +396,7 @@ function homePage() {
         <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">في Adrek نربطك بالمختص المناسب، ونساعدك على تحديد مسارك التطويري عبر مقاييس شخصية ونفسية، وتقارير احترافية، وبرامج تدريبية، لتفهم ذاتك وتبدأ خطوتك القادمة بثقة ووضوح.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
+          <a data-route="/discover" href="/discover" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">اكتشف نفسك أولاً (اختياري)</a>
           <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
         </div>
         <div class="mt-10 grid grid-cols-3 gap-3 text-center sm:max-w-xl">
@@ -870,6 +874,8 @@ function render() {
       : notFoundPage();
   } else if (base.startsWith('/booking/payment/')) {
     app.innerHTML = bookingPaymentPage(decodeURIComponent(base.split('/').pop()));
+  } else if (base === '/discover/result') {
+    app.innerHTML = window.discoveryResultPage ? window.discoveryResultPage() : notFoundPage();
   } else if (base.startsWith('/programs/')) {
     app.innerHTML = catalogDetailPage(programs.find((program) => program.id === Number(base.split('/').pop())), '/programs', 'صفحة عميقة للمنتجات الرقمية', 'إضافة للسلة');
   } else if (base.startsWith('/children-programs/')) {
@@ -879,7 +885,7 @@ function render() {
   } else if (base.startsWith('/leadership-programs/')) {
     app.innerHTML = catalogDetailPage(leadershipPrograms.find((program) => program.id === Number(base.split('/').pop())), '/leadership-programs', 'صفحة عميقة للبرامج القيادية', 'طلب عرض');
   } else {
-    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/booking/confirmation': bookingConfirmationPage, '/login': loginPage }[base] || notFoundPage)();
+    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/discover': () => window.discoveryPage ? window.discoveryPage() : notFoundPage(), '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/booking/confirmation': bookingConfirmationPage, '/login': loginPage }[base] || notFoundPage)();
   }
   bindDynamicControls();
 }
@@ -921,6 +927,8 @@ window.openCoach = openCoach;
 window.navigate = navigate;
 window.bookCoach = bookCoach;
 window.showToast = showToast;
+window.shell = shell;
+window.render = render;
 window.setBookingStep = setBookingStep;
 window.updateBookingField = updateBookingField;
 window.chooseBookingSlot = chooseBookingSlot;
