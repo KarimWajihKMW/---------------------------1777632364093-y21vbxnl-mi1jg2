@@ -18,7 +18,7 @@ const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'cou
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
-const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD || crypto.randomBytes(18).toString('base64url');
+const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD || '';
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -176,11 +176,11 @@ async function ensureDatabase() {
 
     const existingOwner = await client.query('SELECT key FROM app_meta WHERE key = $1', [OWNER_CREDENTIALS_KEY]);
     if (!existingOwner.rowCount) {
+      if (!INITIAL_OWNER_PASSWORD) {
+        throw new Error('Missing OWNER_INITIAL_PASSWORD for initial owner setup.');
+      }
       const passwordHash = await hashPassword(INITIAL_OWNER_PASSWORD);
       await setOwnerCredentials({ username: ownerSeed.username, ...passwordHash }, client);
-      if (!process.env.OWNER_INITIAL_PASSWORD) {
-        console.warn(`Generated initial owner password: ${INITIAL_OWNER_PASSWORD}`);
-      }
     }
     await client.query('COMMIT');
   } catch (error) {
