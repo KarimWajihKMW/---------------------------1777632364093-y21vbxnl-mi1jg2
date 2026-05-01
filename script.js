@@ -58,6 +58,24 @@ const reports = [
   { id: 'WR-1037', client: 'عبدالله ر.', type: 'قيم شخصية', date: '2026-02-05', progress: 76, status: 'مراجعة' }
 ];
 
+const subscriptions = [
+  { id: 1, title: 'اشتراك نمو شهري', category: 'أفراد', period: 'شهري', price: 199, level: 'أساسي', icon: '🌱', status: 'تم التفعيل', outcome: 'جلسة متابعة شهرية مع محتوى تطبيقي وخطة تقدم' },
+  { id: 2, title: 'اشتراك الأسرة الواعية', category: 'أسري', period: 'ربع سنوي', price: 549, level: 'متقدم', icon: '🏡', status: 'تم التفعيل', outcome: 'إرشاد أسري ومكتبة أدوات منزلية وتقارير متابعة' },
+  { id: 3, title: 'اشتراك فرق العمل', category: 'جهات', period: 'سنوي', price: 8900, level: 'مؤسسي', icon: '🏛️', status: 'قريبا', outcome: 'مقاييس رفاه وفريق دعم وبرامج قيادية للموظفين' }
+];
+
+const ownerPhrases = [
+  { id: 1, area: 'الرئيسية', text: 'مساحة آمنة للنمو', status: 'تم التفعيل' },
+  { id: 2, area: 'المنتجات', text: 'ابدأ بخطوة صغيرة وواضحة اليوم', status: 'تم التفعيل' },
+  { id: 3, area: 'الدعم', text: 'فريقنا يتابع طلبك حتى الإغلاق', status: 'قريبا' }
+];
+
+const supportTickets = [
+  { id: 'SUP-1001', client: 'نورة ف.', issue: 'مشكلة في تحميل تقرير PDF', priority: 'عالي', status: 'مفتوح', resolution: 'تمت إعادة توليد الرابط وإرساله للعميلة' },
+  { id: 'SUP-1002', client: 'خالد ع.', issue: 'تعديل موعد جلسة الكوتشينج', priority: 'متوسط', status: 'قيد الحل', resolution: 'بانتظار تأكيد الموعد الجديد من المختص' },
+  { id: 'SUP-1003', client: 'سارة م.', issue: 'استفسار عن تفعيل الاشتراك', priority: 'منخفض', status: 'مغلق', resolution: 'تم شرح خطوات الدخول وتأكيد التفعيل' }
+];
+
 const PAGE_SIZE = 4;
 const DEBOUNCE_MS = 140;
 
@@ -115,8 +133,40 @@ const state = {
   page: 1,
   filter: 'الكل',
   sort: 'rating',
-  search: ''
+  search: '',
+  adminTab: 'programs',
+  adminCollection: 'programs'
 };
+
+const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
+const OWNER_PASSWORD_KEY = 'adrek-owner-password';
+const OWNER_DEFAULT_PASSWORD = '12345678';
+const OWNER_USERNAME = 'admin';
+const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
+const adminCollections = {
+  programs: { label: 'المنتجات الرقمية', route: '/programs', items: programs, fields: ['title', 'category', 'type', 'duration', 'level', 'price', 'icon', 'status', 'outcome'] },
+  children: { label: 'برامج الأطفال', route: '/children-programs', items: childrenPrograms, fields: ['title', 'category', 'age', 'format', 'duration', 'level', 'price', 'icon', 'status', 'outcome'] },
+  courses: { label: 'البرامج والدورات', route: '/courses', items: courses, fields: ['title', 'category', 'audience', 'format', 'duration', 'level', 'price', 'icon', 'status', 'outcome'] },
+  leadership: { label: 'البرامج القيادية', route: '/leadership-programs', items: leadershipPrograms, fields: ['title', 'category', 'audience', 'format', 'duration', 'level', 'price', 'icon', 'status', 'outcome'] },
+  subscriptions: { label: 'الاشتراكات', route: '/admin/subscriptions', items: subscriptions, fields: ['title', 'category', 'period', 'level', 'price', 'icon', 'status', 'outcome'] },
+  assessments: { label: 'المقاييس', route: '/assessments', items: assessments, fields: ['name', 'category', 'questions', 'accuracy', 'status', 'report'] }
+};
+
+Object.entries(adminCollections).forEach(([key, config]) => {
+  const saved = localStorage.getItem(`adrek-admin-${key}`);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) config.items.splice(0, config.items.length, ...parsed);
+    } catch (error) {
+      console.warn(`تعذر تحميل بيانات ${key}`, error);
+    }
+  }
+});
+
+function saveAdminCollection(key) {
+  localStorage.setItem(`adrek-admin-${key}`, JSON.stringify(adminCollections[key].items));
+}
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -276,9 +326,14 @@ function programsPage() {
   `, 'أيقونة المنتجات الرقمية');
 }
 
+function statusBadge(status = 'تم التفعيل') {
+  const active = status === 'تم التفعيل';
+  return `<span class="rounded-full ${active ? 'bg-mint text-moss' : 'bg-sand text-clay'} px-3 py-1 text-xs font-extrabold">${escapeHTML(status)}</span>`;
+}
+
 function programCard(p) {
   return `<article class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur-xl">
-    <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-mint text-3xl">${p.icon}</span>
+    <div class="mb-5 flex items-start justify-between gap-3"><span class="flex h-16 w-16 items-center justify-center rounded-3xl bg-mint text-3xl">${p.icon}</span>${statusBadge(p.status)}</div>
     <p class="text-xs font-extrabold text-clay">${p.type}</p>
     <h3 class="mt-2 font-display text-xl font-extrabold text-moss">${p.title}</h3>
     <p class="mt-3 leading-7 text-ink/62">${p.outcome}</p>
@@ -305,7 +360,7 @@ function catalogPage(config) {
 
 function catalogCard(item, route, actionLabel) {
   return `<article class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur-xl">
-    <div class="flex items-start gap-4"><span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-mint text-3xl">${item.icon}</span><div class="flex-1"><p class="text-xs font-extrabold text-clay">${item.category}</p><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${item.title}</h3><p class="mt-3 leading-7 text-ink/62">${item.outcome}</p></div></div>
+    <div class="flex items-start gap-4"><span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-mint text-3xl">${item.icon}</span><div class="flex-1"><div class="flex flex-wrap items-start justify-between gap-2"><p class="text-xs font-extrabold text-clay">${item.category}</p>${statusBadge(item.status)}</div><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${item.title}</h3><p class="mt-3 leading-7 text-ink/62">${item.outcome}</p></div></div>
     <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-3 py-1">${item.duration}</span><span class="rounded-full bg-sand/70 px-3 py-1">${item.level}</span><span class="rounded-full bg-sand/70 px-3 py-1">${item.audience || item.age}</span><span class="rounded-full bg-sand/70 px-3 py-1">${item.format}</span></div>
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-moss/10 pt-4"><b class="text-moss">${item.price.toLocaleString('ar-SA')} ر.س</b><div class="flex gap-2"><button onclick="navigate('${route}/${item.id}')" class="table-action rounded-2xl bg-mint px-4 py-2 text-sm font-extrabold text-moss">عرض</button><button onclick="showToast('${actionLabel}: ${item.title}')" class="table-action rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">${actionLabel}</button></div></div>
   </article>`;
@@ -320,7 +375,7 @@ function catalogDetailPage(item, route, eyebrow, ctaLabel) {
   const audience = item.audience || item.age || item.level;
   return shell(item.title, `${item.category} · ${item.duration} · ${item.level}`, `
     <div class="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
-      <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><span class="mb-4 flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-mint text-4xl">${item.icon}</span><h3 class="font-display text-2xl font-extrabold text-moss">مخرجات البرنامج</h3><p class="mt-4 leading-9 text-ink/65">${item.outcome}. يتضمن المسار جلسة تعريفية، مواد تطبيقية، ومتابعة تقدم لضمان انتقال الأثر إلى الحياة اليومية أو بيئة العمل.</p><div class="mt-6 flex flex-wrap gap-2 text-sm font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-4 py-2">${format}</span><span class="rounded-full bg-sand/70 px-4 py-2">${audience}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.price.toLocaleString('ar-SA')} ر.س</span></div></div>
+      <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><div class="mb-4 flex items-start justify-between gap-3"><span class="flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-mint text-4xl">${item.icon}</span>${statusBadge(item.status)}</div><h3 class="font-display text-2xl font-extrabold text-moss">مخرجات البرنامج</h3><p class="mt-4 leading-9 text-ink/65">${item.outcome}. يتضمن المسار جلسة تعريفية، مواد تطبيقية، ومتابعة تقدم لضمان انتقال الأثر إلى الحياة اليومية أو بيئة العمل.</p><div class="mt-6 flex flex-wrap gap-2 text-sm font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-4 py-2">${format}</span><span class="rounded-full bg-sand/70 px-4 py-2">${audience}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.price.toLocaleString('ar-SA')} ر.س</span></div></div>
       <div class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">إجراءات البرنامج</h3><div class="mt-5 grid gap-3"><button onclick="showToast('${ctaLabel}: ${item.title}')" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">${ctaLabel}</button><button onclick="showToast('تم فتح نموذج تعديل البرنامج')" class="rounded-2xl bg-white/10 px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">تعديل</button><button onclick="showToast('تم نسخ رابط الصفحة')" class="rounded-2xl bg-white/10 px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">نسخ الرابط</button><button onclick="showToast('تم أرشفة البرنامج')" class="rounded-2xl bg-red-50 px-5 py-3 font-extrabold text-red-700 transition hover:-translate-y-1">حذف</button></div><a href="${route}" data-route="${route}" class="mt-6 inline-flex rounded-2xl border border-white/20 px-5 py-3 font-extrabold text-white">العودة للقائمة</a></div>
     </div>
   `, eyebrow);
@@ -398,7 +453,9 @@ function notFoundPage() { return shell('الصفحة غير موجودة', 'يم
 function render() {
   const base = state.route;
   document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', base === a.dataset.route || base.startsWith(`${a.dataset.route}/`)));
-  if (base.startsWith('/coaches/')) {
+  if (base.startsWith('/admin')) {
+    app.innerHTML = adminPage();
+  } else if (base.startsWith('/coaches/')) {
     const id = Number(base.split('/').pop());
     const c = coaches.find(item => item.id === id) || coaches[0];
     app.innerHTML = shell(c.name, `${c.specialty} · ${c.city} · تقييم ${c.rating}`, `<div class="grid gap-6 lg:grid-cols-2"><div class="rounded-[2rem] bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">نبذة مهنية</h3><p class="mt-4 leading-8 text-ink/65">مختص بخبرة ${c.experience} سنوات في ${c.badge}. يقدم جلسات فردية وخطط متابعة وتقارير تقدم مختصرة.</p></div><div class="rounded-[2rem] bg-moss p-6 text-white"><h3 class="font-display text-2xl font-extrabold">أقرب موعد</h3><p class="mt-4 text-white/75">${c.next}</p><button onclick="bookCoach(${c.id})" class="mt-6 rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">احجز الآن</button></div></div>`, 'صفحة تفصيلية');
@@ -443,6 +500,12 @@ window.openCoach = openCoach;
 window.navigate = navigate;
 window.bookCoach = bookCoach;
 window.showToast = showToast;
+window.adminCollections = adminCollections;
+window.ADMIN_STATUS_OPTIONS = ADMIN_STATUS_OPTIONS;
+window.OWNER_AUTH_KEY = OWNER_AUTH_KEY;
+window.OWNER_PASSWORD_KEY = OWNER_PASSWORD_KEY;
+window.OWNER_DEFAULT_PASSWORD = OWNER_DEFAULT_PASSWORD;
+window.OWNER_USERNAME = OWNER_USERNAME;
 
 window.addEventListener('popstate', () => { state.route = getCurrentRoute(); render(); });
 window.addEventListener('hashchange', () => {
