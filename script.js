@@ -2,16 +2,16 @@ console.log('Akwadra Super Builder Initialized - Adrek Platform');
 
 const coaches = [
   { id: 1, name: 'د. ريم العبدالله', specialty: 'إرشاد نفسي', city: 'عن بعد', rating: 4.9, price: 220, next: 'اليوم 7:30م', badge: 'جلسات قلق وتوازن', image: 'ر', experience: 11 },
-  { id: 2, name: 'أ. ناصر الحربي', specialty: 'كوتشينق مهني', city: 'الرياض', rating: 4.8, price: 180, next: 'غداً 5:00م', badge: 'تخطيط مسار', image: 'ن', experience: 8 },
+  { id: 2, name: 'أ. ناصر الحربي', specialty: 'كوتشينج مهني', city: 'الرياض', rating: 4.8, price: 180, next: 'غداً 5:00م', badge: 'تخطيط مسار', image: 'ن', experience: 8 },
   { id: 3, name: 'د. ليان الشمري', specialty: 'إرشاد أسري', city: 'جدة', rating: 4.95, price: 260, next: 'الأربعاء 8:00م', badge: 'العلاقات الأسرية', image: 'ل', experience: 13 },
   { id: 4, name: 'أ. مها اليامي', specialty: 'تطوير الذات', city: 'عن بعد', rating: 4.7, price: 150, next: 'الخميس 6:30م', badge: 'عادات وإنجاز', image: 'م', experience: 6 },
   { id: 5, name: 'د. سامي القحطاني', specialty: 'إرشاد نفسي', city: 'الدمام', rating: 4.85, price: 240, next: 'السبت 4:00م', badge: 'إدارة الضغوط', image: 'س', experience: 10 },
-  { id: 6, name: 'أ. جود الرشيد', specialty: 'كوتشينق علاقات', city: 'عن بعد', rating: 4.78, price: 190, next: 'الأحد 9:00م', badge: 'وعي وحدود', image: 'ج', experience: 7 }
+  { id: 6, name: 'أ. جود الرشيد', specialty: 'كوتشينج علاقات', city: 'عن بعد', rating: 4.78, price: 190, next: 'الأحد 9:00م', badge: 'وعي وحدود', image: 'ج', experience: 7 }
 ];
 
 const programs = [
   { id: 1, title: 'دفتر الهدوء الرقمي', type: 'منتج تدريبي رقمي', duration: '21 يوم', price: 89, level: 'مبتدئ', icon: '🌿' },
-  { id: 2, title: 'برنامج وضوح المسار', type: 'برنامج كوتشينق ذاتي', duration: '4 أسابيع', price: 240, level: 'متوسط', icon: '🧭' },
+  { id: 2, title: 'برنامج وضوح المسار', type: 'برنامج كوتشينج ذاتي', duration: '4 أسابيع', price: 240, level: 'متوسط', icon: '🧭' },
   { id: 3, title: 'حقيبة مهارات التواصل الأسري', type: 'حقيبة تدريبية', duration: '10 وحدات', price: 170, level: 'عائلي', icon: '🏡' },
   { id: 4, title: 'خطة التعافي من الاحتراق', type: 'برنامج صوتي وعملي', duration: '14 يوم', price: 120, level: 'عملي', icon: '✨' },
   { id: 5, title: 'قوالب جلسات التأمل الموجه', type: 'مكتبة رقمية', duration: '30 ملف', price: 65, level: 'متاح للجميع', icon: '🎧' }
@@ -26,7 +26,7 @@ const assessments = [
 
 const reports = [
   { id: 'WR-1042', client: 'سارة م.', type: 'اتزان نفسي', date: '2026-02-12', progress: 82, status: 'جاهز' },
-  { id: 'WR-1041', client: 'خالد ع.', type: 'كوتشينق مهني', date: '2026-02-10', progress: 68, status: 'قيد الإعداد' },
+  { id: 'WR-1041', client: 'خالد ع.', type: 'كوتشينج مهني', date: '2026-02-10', progress: 68, status: 'قيد الإعداد' },
   { id: 'WR-1039', client: 'نورة ف.', type: 'إرشاد أسري', date: '2026-02-08', progress: 94, status: 'جاهز' },
   { id: 'WR-1037', client: 'عبدالله ر.', type: 'قيم شخصية', date: '2026-02-05', progress: 76, status: 'مراجعة' }
 ];
@@ -104,7 +104,7 @@ function homePage() {
     <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-20">
       <div class="reveal">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-moss/10 bg-white/70 px-4 py-2 text-sm font-extrabold text-moss shadow-sm"><span class="h-2 w-2 rounded-full bg-sage"></span> منصة واحدة للمستفيد ومزود الخدمة</span>
-        <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">احجز استشارة نفسية أو أسرية أو جلسة كوتشينق في مساحة آمنة وهادئة.</h1>
+        <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">احجز جلسة كوتشينج أو دعم نفسي أو أسري أو تطوير مهني أو قيادي في مساحة آمنة وبكل خصوصية</h1>
         <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">Adrek تجمع المختصين، المنتجات التدريبية الرقمية، برامج المقاييس الشخصية والنفسية، وإصدار تقارير احترافية تساعدك على فهم ذاتك وخطوتك التالية.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
@@ -127,7 +127,7 @@ function homePage() {
               <div class="z-10 text-center"><div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white text-3xl shadow-calm">🌱</div><p class="font-display text-3xl font-extrabold text-moss">82%</p><p class="text-sm font-bold text-ink/60">مؤشر التحسن</p></div>
             </div>
             <div class="space-y-3">
-              ${journey('مقياس أولي', 'اكتمل', 100)}${journey('جلسة كوتشينق', 'اليوم 7:30م', 64)}${journey('تقرير مهني', 'قيد المراجعة', 48)}
+              ${journey('مقياس أولي', 'اكتمل', 100)}${journey('جلسة كوتشينج', 'اليوم 7:30م', 64)}${journey('تقرير مهني', 'قيد المراجعة', 48)}
               <div class="rounded-3xl bg-white p-4 shadow-sm"><p class="mb-2 text-sm font-extrabold text-moss">توصية ذكية</p><p class="text-sm leading-7 text-ink/65">ابدأ ببرنامج وضوح المسار مع جلسة متابعة بعد 7 أيام.</p></div>
             </div>
           </div>
@@ -146,7 +146,7 @@ function homePage() {
   <section class="bg-moss py-16 text-white">
     <div class="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
       <div class="lg:col-span-1"><span class="rounded-full bg-white/10 px-4 py-2 text-sm font-bold">رحلة واضحة</span><h2 class="mt-4 font-display text-3xl font-extrabold">من سؤالك الأول حتى التقرير النهائي</h2></div>
-      <div class="grid gap-4 lg:col-span-2 md:grid-cols-3">${step('01','اختر المسار','كوتشينق، نفسي، أسري، أو تطوير ذات.')}${step('02','احجز أو ابدأ مقياس','مواعيد مباشرة ومنتجات رقمية فورية.')}${step('03','استلم تقريرك','ملخص احترافي وتوصيات قابلة للتنفيذ.')}</div>
+      <div class="grid gap-4 lg:col-span-2 md:grid-cols-3">${step('01','اختر المسار','كوتشينج، نفسي، أسري، أو تطوير ذات.')}${step('02','احجز أو ابدأ مقياس','مواعيد مباشرة ومنتجات رقمية فورية.')}${step('03','استلم تقريرك','ملخص احترافي وتوصيات قابلة للتنفيذ.')}</div>
     </div>
   </section>`;
 }
@@ -172,7 +172,7 @@ function coachesPage() {
     </div>
     <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.map(coachCard).join('')}</div>
     ${pagination(pages)}
-  `, 'حجز الأطباء بصيغة الكوتشينق');
+  `, 'حجز الأطباء بصيغة الكوتشينج');
 }
 
 function coachCard(c) {
@@ -213,7 +213,7 @@ function reportsPage() {
 
 function joinProviderPage() {
   return shell('انضم كمزود خدمة', 'مسار احترافي للمدربين والمستشارين: ملف تعريفي، اعتماد، إدارة مواعيد، منتجات رقمية، وتقارير للمستفيدين.', `
-    <div class="grid gap-6 lg:grid-cols-2"><form class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); showToast('تم إرسال طلب الانضمام بنجاح')"><div class="grid gap-4"><input required placeholder="الاسم الكامل" class="rounded-2xl border border-moss/10 px-4 py-3"><input required placeholder="البريد المهني" class="rounded-2xl border border-moss/10 px-4 py-3"><select class="rounded-2xl border border-moss/10 px-4 py-3"><option>كوتشينق مهني</option><option>إرشاد نفسي</option><option>إرشاد أسري</option><option>تطوير ذات</option></select><textarea placeholder="نبذة عن خبرتك وشهاداتك" class="min-h-32 rounded-2xl border border-moss/10 px-4 py-3"></textarea><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white transition hover:-translate-y-1">إرسال الطلب</button></div></form><div class="space-y-4">${['إدارة جدول ومواعيد مرنة','بيع المنتجات الرقمية والحقائب','إصدار تقارير للمستفيدين','صفحة عامة قابلة للمشاركة'].map((x,i)=>`<div class="card-hover rounded-[2rem] border border-white/70 bg-white/65 p-5"><span class="text-sm font-extrabold text-clay">ميزة ${i+1}</span><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${x}</h3></div>`).join('')}</div></div>
+    <div class="grid gap-6 lg:grid-cols-2"><form class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); showToast('تم إرسال طلب الانضمام بنجاح')"><div class="grid gap-4"><input required placeholder="الاسم الكامل" class="rounded-2xl border border-moss/10 px-4 py-3"><input required placeholder="البريد المهني" class="rounded-2xl border border-moss/10 px-4 py-3"><select class="rounded-2xl border border-moss/10 px-4 py-3"><option>كوتشينج مهني</option><option>إرشاد نفسي</option><option>إرشاد أسري</option><option>تطوير ذات</option></select><textarea placeholder="نبذة عن خبرتك وشهاداتك" class="min-h-32 rounded-2xl border border-moss/10 px-4 py-3"></textarea><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white transition hover:-translate-y-1">إرسال الطلب</button></div></form><div class="space-y-4">${['إدارة جدول ومواعيد مرنة','بيع المنتجات الرقمية والحقائب','إصدار تقارير للمستفيدين','صفحة عامة قابلة للمشاركة'].map((x,i)=>`<div class="card-hover rounded-[2rem] border border-white/70 bg-white/65 p-5"><span class="text-sm font-extrabold text-clay">ميزة ${i+1}</span><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${x}</h3></div>`).join('')}</div></div>
   `, 'للمزودين');
 }
 
@@ -225,7 +225,7 @@ function dashboardReportsPage() {
 
 function bookingPage() {
   return shell('حجز جلسة جديدة', 'نموذج حجز سريع يربط المستفيد بالمختص المناسب مع اختيار نوع الجلسة والوقت.', `
-    <form class="mx-auto max-w-3xl rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); showToast('تم تأكيد طلب الحجز')"><div class="grid gap-4 md:grid-cols-2"><select class="rounded-2xl border border-moss/10 px-4 py-3"><option>إرشاد نفسي</option><option>كوتشينق مهني</option><option>إرشاد أسري</option><option>تطوير ذات</option></select><select class="rounded-2xl border border-moss/10 px-4 py-3">${coaches.map(c=>`<option>${c.name}</option>`).join('')}</select><input type="date" class="rounded-2xl border border-moss/10 px-4 py-3"><input type="time" class="rounded-2xl border border-moss/10 px-4 py-3"><textarea class="min-h-32 rounded-2xl border border-moss/10 px-4 py-3 md:col-span-2" placeholder="ما الهدف من الجلسة؟"></textarea><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white transition hover:-translate-y-1 md:col-span-2">تأكيد الحجز</button></div></form>
+    <form class="mx-auto max-w-3xl rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); showToast('تم تأكيد طلب الحجز')"><div class="grid gap-4 md:grid-cols-2"><select class="rounded-2xl border border-moss/10 px-4 py-3"><option>إرشاد نفسي</option><option>كوتشينج مهني</option><option>إرشاد أسري</option><option>تطوير ذات</option></select><select class="rounded-2xl border border-moss/10 px-4 py-3">${coaches.map(c=>`<option>${c.name}</option>`).join('')}</select><input type="date" class="rounded-2xl border border-moss/10 px-4 py-3"><input type="time" class="rounded-2xl border border-moss/10 px-4 py-3"><textarea class="min-h-32 rounded-2xl border border-moss/10 px-4 py-3 md:col-span-2" placeholder="ما الهدف من الجلسة؟"></textarea><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white transition hover:-translate-y-1 md:col-span-2">تأكيد الحجز</button></div></form>
   `, 'حجز آمن');
 }
 
