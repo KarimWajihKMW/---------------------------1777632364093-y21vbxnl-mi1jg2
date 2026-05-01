@@ -105,7 +105,7 @@ function homePage() {
       <div class="reveal">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-moss/10 bg-white/70 px-4 py-2 text-sm font-extrabold text-moss shadow-sm"><span class="h-2 w-2 rounded-full bg-sage"></span> منصة واحدة للمستفيد ومزود الخدمة</span>
         <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">جلسات كوتشينج .دعم نفسي وأسري . تطوير مهني وقيادي. برامج نمائية وسلوكية للأطفال والمراهقين .</h1>
-        <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">Adrek تجمع المختصين، المنتجات التدريبية الرقمية، برامج المقاييس الشخصية والنفسية، وإصدار تقارير احترافية تساعدك على فهم ذاتك وخطوتك التالية.</p>
+        <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">نربطك بالمختص المناسب، ونساعدك على تحديد مسارك التطويري عبر مقاييس شخصية ونفسية، وتقارير احترافية، وبرامج تدريبية، لتفهم ذاتك وتبدأ خطوتك القادمة بثقة ووضوح.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
           <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
