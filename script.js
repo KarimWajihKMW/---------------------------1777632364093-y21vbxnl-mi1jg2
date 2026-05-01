@@ -17,6 +17,33 @@ const programs = [
   { id: 5, title: 'قوالب جلسات التأمل الموجه', type: 'مكتبة رقمية', duration: '30 ملف', price: 65, level: 'متاح للجميع', icon: '🎧' }
 ];
 
+const childrenPrograms = [
+  { id: 1, title: 'برنامج تنظيم الانفعالات للأطفال', category: 'سلوكي', age: '6 - 9 سنوات', format: 'جلسات تفاعلية', duration: '6 أسابيع', price: 520, level: 'تأسيسي', icon: '🧩', outcome: 'تعزيز التعبير عن المشاعر وتقليل نوبات الغضب' },
+  { id: 2, title: 'رحلة المهارات الاجتماعية', category: 'نمائي', age: '8 - 12 سنة', format: 'مجموعة صغيرة', duration: '8 أسابيع', price: 680, level: 'متوسط', icon: '🤝', outcome: 'بناء مهارات المشاركة، الدور، وبدء الحوار' },
+  { id: 3, title: 'خطة تعديل السلوك المنزلية', category: 'سلوكي أسري', age: '4 - 10 سنوات', format: 'إرشاد والدين', duration: '4 أسابيع', price: 430, level: 'عملي', icon: '🏡', outcome: 'جدول تعزيز ومتابعة يومية قابلة للتطبيق في المنزل' },
+  { id: 4, title: 'برنامج الانتباه والروتين', category: 'نمائي', age: '7 - 13 سنة', format: 'تمارين منزلية', duration: '5 أسابيع', price: 390, level: 'تأسيسي', icon: '🎯', outcome: 'تحسين الالتزام بالروتين والانتباه للمهام القصيرة' },
+  { id: 5, title: 'مسار الاستعداد المدرسي', category: 'نمائي مدرسي', age: '5 - 7 سنوات', format: 'تقييم وخطة', duration: '3 أسابيع', price: 350, level: 'مبكر', icon: '🎒', outcome: 'خطة انتقال للمدرسة تشمل المهارات الاستقلالية والاجتماعية' },
+  { id: 6, title: 'برنامج المرونة للمراهقين', category: 'سلوكي', age: '13 - 16 سنة', format: 'كوتشينج مراهقين', duration: '6 أسابيع', price: 590, level: 'متقدم', icon: '🌈', outcome: 'رفع الوعي الذاتي وإدارة الضغوط والعلاقات' }
+];
+
+const courses = [
+  { id: 1, title: 'دورة أساسيات الكوتشينج الشخصي', category: 'كوتشينج', audience: 'أفراد وممارسون', format: 'مباشر عن بعد', duration: '12 ساعة', price: 450, level: 'مبتدئ', icon: '🎓', outcome: 'إتقان أدوات الأسئلة القوية وبناء هدف قابل للقياس' },
+  { id: 2, title: 'برنامج إدارة الضغوط والاتزان', category: 'صحة نفسية', audience: 'الأفراد والفرق', format: 'مسجل + لقاءات', duration: '4 أسابيع', price: 320, level: 'متوسط', icon: '🍃', outcome: 'خطة شخصية للتعامل مع الضغط والاحتراق' },
+  { id: 3, title: 'دورة مهارات التواصل الأسري', category: 'أسري', audience: 'الوالدان والأزواج', format: 'ورشة تفاعلية', duration: '6 ساعات', price: 260, level: 'عملي', icon: '💬', outcome: 'تطبيق نماذج حوار وحدود صحية داخل الأسرة' },
+  { id: 4, title: 'برنامج بناء العادات والإنجاز', category: 'تطوير ذات', audience: 'طلاب وموظفون', format: 'تحدي تطبيقي', duration: '21 يوم', price: 180, level: 'مبتدئ', icon: '✅', outcome: 'تصميم نظام متابعة عادات أسبوعي قابل للاستمرار' },
+  { id: 5, title: 'دورة صناعة التقارير المهنية', category: 'مهني', audience: 'مستشارون ومزودو خدمة', format: 'تدريب تطبيقي', duration: '8 ساعات', price: 520, level: 'متقدم', icon: '📊', outcome: 'كتابة تقرير واضح بتوصيات قابلة للتنفيذ' },
+  { id: 6, title: 'برنامج الوعي بالقيم والقرار', category: 'تطوير ذات', audience: 'أفراد', format: 'مسار ذاتي', duration: '10 أيام', price: 140, level: 'مبتدئ', icon: '🧭', outcome: 'تحديد القيم الأساسية وربطها بالقرارات اليومية' }
+];
+
+const leadershipPrograms = [
+  { id: 1, title: 'برنامج القيادة الواعية للمنظمات', category: 'قيادة تنفيذية', audience: 'قيادات عليا', format: 'حضوري/عن بعد', duration: '5 أيام', price: 12500, level: 'تنفيذي', icon: '🏛️', outcome: 'مواءمة الرؤية والسلوك القيادي ومؤشرات الأثر' },
+  { id: 2, title: 'مختبر بناء فرق عالية الأداء', category: 'فرق العمل', audience: 'إدارات وفرق', format: 'ورشة تطبيقية', duration: '3 أيام', price: 8800, level: 'متوسط', icon: '🚀', outcome: 'رفع الثقة وتوزيع الأدوار وبناء اتفاقيات عمل واضحة' },
+  { id: 3, title: 'مسار إدارة التغيير المؤسسي', category: 'تحول وتغيير', audience: 'منظمات', format: 'استشارات + تدريب', duration: '6 أسابيع', price: 18500, level: 'متقدم', icon: '🔄', outcome: 'خارطة تغيير تشمل أصحاب المصلحة والمخاطر والتواصل' },
+  { id: 4, title: 'برنامج ذكاء التواصل القيادي', category: 'تواصل مؤسسي', audience: 'مدراء أقسام', format: 'تدريب تنفيذي', duration: '16 ساعة', price: 7200, level: 'متوسط', icon: '🗣️', outcome: 'تحسين المحادثات الصعبة والتغذية الراجعة والاجتماعات' },
+  { id: 5, title: 'أكاديمية قادة الصف الثاني', category: 'إعداد قيادات', audience: 'مرشحون للترقية', format: 'رحلة تعلم', duration: '8 أسابيع', price: 16000, level: 'متقدم', icon: '⭐', outcome: 'تطوير الكفاءات القيادية وخطة نمو فردية لكل مشارك' },
+  { id: 6, title: 'تقييم الثقافة والرفاه المؤسسي', category: 'تشخيص مؤسسي', audience: 'جهات ومنظمات', format: 'تقييم وتقرير', duration: '4 أسابيع', price: 21000, level: 'استراتيجي', icon: '📈', outcome: 'تقرير قياس ثقافة ورفاه مع توصيات تنفيذية' }
+];
+
 const assessments = [
   { id: 1, name: 'مقياس الاتزان النفسي', category: 'نفسي', questions: 48, report: 'تحليل مستويات الضغط والمرونة', accuracy: '92%' },
   { id: 2, name: 'بوصلة القيم الشخصية', category: 'شخصي', questions: 36, report: 'خريطة أولويات وقرارات', accuracy: '89%' },
@@ -138,9 +165,9 @@ function homePage() {
   <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
     <div class="grid gap-4 md:grid-cols-4">
       ${feature('🧑‍⚕️','حجز مختصين','بحث وفرز حسب التخصص والسعر والتقييم مع مواعيد مباشرة.','/coaches')}
-      ${feature('🎓','منتجات رقمية','أيقونة خاصة للحقائب والبرامج التدريبية الذاتية.','/programs')}
-      ${feature('📏','مقاييس نفسية','اختبارات شخصية ونفسية وأسرية بتقارير قابلة للمشاركة.','/assessments')}
-      ${feature('📊','تقارير احترافية','لوحة تقارير بصلاحيات وتقدم ورسوم متابعة.','/reports')}
+      ${feature('🧩','برامج الأطفال','برامج نمائية وسلوكية للأطفال والمراهقين بخطط للأسرة والمدرسة.','/children-programs')}
+      ${feature('🎓','برامج ودورات','دورات تدريبية مباشرة ومسجلة للأفراد والممارسين.','/courses')}
+      ${feature('🏛️','برامج قيادية','مسارات تطوير قيادي للجهات والمنظمات وفرق العمل.','/leadership-programs')}
     </div>
   </section>
   <section class="bg-moss py-16 text-white">
@@ -158,8 +185,10 @@ function step(num, title, text) { return `<div class="rounded-[2rem] border bord
 
 function coachesPage() {
   const specialties = ['الكل', ...new Set(coaches.map(c => c.specialty))];
-  let list = coaches.filter(c => state.filter === 'الكل' || c.specialty === state.filter).filter(c => c.name.includes(state.search) || c.specialty.includes(state.search));
-  list.sort((a,b) => state.sort === 'price' ? a.price - b.price : state.sort === 'experience' ? b.experience - a.experience : b.rating - a.rating);
+  const activeFilter = specialties.includes(state.filter) ? state.filter : 'الكل';
+  const activeSort = ['rating', 'price', 'experience'].includes(state.sort) ? state.sort : 'rating';
+  let list = coaches.filter(c => activeFilter === 'الكل' || c.specialty === activeFilter).filter(c => c.name.includes(state.search) || c.specialty.includes(state.search));
+  list.sort((a,b) => activeSort === 'price' ? a.price - b.price : activeSort === 'experience' ? b.experience - a.experience : b.rating - a.rating);
   const perPage = 4;
   const pages = Math.max(1, Math.ceil(list.length / perPage));
   state.page = Math.min(state.page, pages);
@@ -167,8 +196,8 @@ function coachesPage() {
   return shell('دليل المستشارين والكوتشز', 'قائمة قابلة للبحث والفرز والتصفية مع صفحات مستقلة وتفاصيل عميقة لكل مزود خدمة.', `
     <div class="reveal grid gap-4 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm md:grid-cols-4">
       <input id="searchInput" value="${state.search}" placeholder="ابحث بالاسم أو التخصص" class="rounded-2xl border border-moss/10 bg-white px-4 py-3 transition focus:border-sage md:col-span-2">
-      <select id="filterSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${specialties.map(s => `<option ${s===state.filter?'selected':''}>${s}</option>`).join('')}</select>
-      <select id="sortSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option value="rating" ${state.sort==='rating'?'selected':''}>الأعلى تقييماً</option><option value="price" ${state.sort==='price'?'selected':''}>الأقل سعراً</option><option value="experience" ${state.sort==='experience'?'selected':''}>الأكثر خبرة</option></select>
+      <select id="filterSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${specialties.map(s => `<option ${s===activeFilter?'selected':''}>${s}</option>`).join('')}</select>
+      <select id="sortSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option value="rating" ${activeSort==='rating'?'selected':''}>الأعلى تقييماً</option><option value="price" ${activeSort==='price'?'selected':''}>الأقل سعراً</option><option value="experience" ${activeSort==='experience'?'selected':''}>الأكثر خبرة</option></select>
     </div>
     <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.map(coachCard).join('')}</div>
     ${pagination(pages)}
@@ -192,6 +221,50 @@ function programsPage() {
   return shell('المنتجات الرقمية التدريبية', 'مكتبة برامج وحقائب رقمية بأيقونة واضحة ومسارات قابلة للشراء أو الإهداء أو الإضافة لخطة المستفيد.', `
     <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">${programs.map(p => `<article class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm"><span class="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-mint text-3xl">${p.icon}</span><p class="text-xs font-extrabold text-clay">${p.type}</p><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${p.title}</h3><div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-3 py-1">${p.duration}</span><span class="rounded-full bg-sand/70 px-3 py-1">${p.level}</span></div><div class="mt-6 flex items-center justify-between"><b class="text-moss">${p.price} ر.س</b><button onclick="showToast('تمت إضافة ${p.title} إلى السلة')" class="rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white transition hover:-translate-y-1">إضافة</button></div></article>`).join('')}</div>
   `, 'أيقونة المنتجات الرقمية');
+}
+
+function catalogPage(config) {
+  const categories = ['الكل', ...new Set(config.items.map(item => item.category))];
+  const activeFilter = categories.includes(state.filter) ? state.filter : 'الكل';
+  const activeSort = ['title', 'price', 'duration'].includes(state.sort) ? state.sort : 'title';
+  let list = config.items
+    .filter(item => activeFilter === 'الكل' || item.category === activeFilter)
+    .filter(item => [item.title, item.category, item.level, item.format, item.audience, item.age].filter(Boolean).some(value => value.includes(state.search)));
+  list.sort((a, b) => activeSort === 'price' ? a.price - b.price : activeSort === 'duration' ? parseInt(a.duration) - parseInt(b.duration) : a.title.localeCompare(b.title, 'ar'));
+  const perPage = 4;
+  const pages = Math.max(1, Math.ceil(list.length / perPage));
+  state.page = Math.min(state.page, pages);
+  const visible = list.slice((state.page - 1) * perPage, state.page * perPage);
+  return shell(config.title, config.subtitle, `
+    <div class="reveal grid gap-4 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm md:grid-cols-4">
+      <input id="searchInput" value="${state.search}" placeholder="ابحث باسم البرنامج أو الفئة" class="rounded-2xl border border-moss/10 bg-white px-4 py-3 transition focus:border-sage md:col-span-2">
+      <select id="filterSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${categories.map(s => `<option ${s===activeFilter?'selected':''}>${s}</option>`).join('')}</select>
+      <select id="sortSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option value="title" ${activeSort==='title'?'selected':''}>ترتيب أبجدي</option><option value="price" ${activeSort==='price'?'selected':''}>الأقل تكلفة</option><option value="duration" ${activeSort==='duration'?'selected':''}>الأقصر مدة</option></select>
+    </div>
+    <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.map(item => catalogCard(item, config.route, config.actionLabel)).join('')}</div>
+    ${pagination(pages)}
+  `, config.eyebrow);
+}
+
+function catalogCard(item, route, actionLabel) {
+  return `<article class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur-xl">
+    <div class="flex items-start gap-4"><span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-mint text-3xl">${item.icon}</span><div class="flex-1"><p class="text-xs font-extrabold text-clay">${item.category}</p><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${item.title}</h3><p class="mt-3 leading-7 text-ink/62">${item.outcome}</p></div></div>
+    <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-3 py-1">${item.duration}</span><span class="rounded-full bg-sand/70 px-3 py-1">${item.level}</span><span class="rounded-full bg-sand/70 px-3 py-1">${item.audience || item.age}</span><span class="rounded-full bg-sand/70 px-3 py-1">${item.format}</span></div>
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-moss/10 pt-4"><b class="text-moss">${item.price.toLocaleString('ar-SA')} ر.س</b><div class="flex gap-2"><button onclick="navigate('${route}/${item.id}')" class="table-action rounded-2xl bg-mint px-4 py-2 text-sm font-extrabold text-moss">عرض</button><button onclick="showToast('${actionLabel}: ${item.title}')" class="table-action rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">${actionLabel}</button></div></div>
+  </article>`;
+}
+
+function childrenProgramsPage() { return catalogPage({ route: '/children-programs', items: childrenPrograms, title: 'البرامج النمائية والسلوكية للأطفال', subtitle: 'مسارات متخصصة للأطفال والمراهقين تجمع بين التقييم، تدريب المهارات، تعديل السلوك، وإرشاد الوالدين بخطط متابعة واضحة.', eyebrow: 'برامج الأطفال', actionLabel: 'طلب الخطة' }); }
+function coursesPage() { return catalogPage({ route: '/courses', items: courses, title: 'البرامج والدورات', subtitle: 'دورات وبرامج تدريبية مباشرة ومسجلة للأفراد والأسر والممارسين، مع خيارات فرز وتصفية حسب المجال والمستوى والتكلفة.', eyebrow: 'تعلم وتطوير', actionLabel: 'تسجيل' }); }
+function leadershipProgramsPage() { return catalogPage({ route: '/leadership-programs', items: leadershipPrograms, title: 'البرامج القيادية للجهات والمنظمات', subtitle: 'حلول تطوير قيادي وتشخيص ثقافة وبناء فرق مصممة للجهات والمنظمات مع مخرجات تنفيذية قابلة للقياس.', eyebrow: 'حلول مؤسسية', actionLabel: 'طلب عرض' }); }
+
+function catalogDetailPage(item, route, eyebrow, ctaLabel) {
+  return shell(item.title, `${item.category} · ${item.duration} · ${item.level}`, `
+    <div class="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+      <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><span class="mb-4 flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-mint text-4xl">${item.icon}</span><h3 class="font-display text-2xl font-extrabold text-moss">مخرجات البرنامج</h3><p class="mt-4 leading-9 text-ink/65">${item.outcome}. يتضمن المسار جلسة تعريفية، مواد تطبيقية، ومتابعة تقدم لضمان انتقال الأثر إلى الحياة اليومية أو بيئة العمل.</p><div class="mt-6 flex flex-wrap gap-2 text-sm font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-4 py-2">${item.format}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.audience || item.age}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.price.toLocaleString('ar-SA')} ر.س</span></div></div>
+      <div class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">إجراءات البرنامج</h3><div class="mt-5 grid gap-3"><button onclick="showToast('${ctaLabel}: ${item.title}')" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">${ctaLabel}</button><button onclick="showToast('تم فتح نموذج تعديل البرنامج')" class="rounded-2xl bg-white/10 px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">تعديل</button><button onclick="showToast('تم نسخ رابط الصفحة')" class="rounded-2xl bg-white/10 px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">نسخ الرابط</button><button onclick="showToast('تم أرشفة البرنامج')" class="rounded-2xl bg-red-50 px-5 py-3 font-extrabold text-red-700 transition hover:-translate-y-1">حذف</button></div><a href="${route}" data-route="${route}" class="mt-6 inline-flex rounded-2xl border border-white/20 px-5 py-3 font-extrabold text-white">العودة للقائمة</a></div>
+    </div>
+  `, eyebrow);
 }
 
 function assessmentsPage() {
@@ -237,13 +310,22 @@ function notFoundPage() { return shell('الصفحة غير موجودة', 'يم
 
 function render() {
   const base = state.route;
-  document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', a.dataset.route === base));
+  document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', base === a.dataset.route || base.startsWith(`${a.dataset.route}/`)));
   if (base.startsWith('/coaches/')) {
     const id = Number(base.split('/').pop());
     const c = coaches.find(item => item.id === id) || coaches[0];
     app.innerHTML = shell(c.name, `${c.specialty} · ${c.city} · تقييم ${c.rating}`, `<div class="grid gap-6 lg:grid-cols-2"><div class="rounded-[2rem] bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">نبذة مهنية</h3><p class="mt-4 leading-8 text-ink/65">مختص بخبرة ${c.experience} سنوات في ${c.badge}. يقدم جلسات فردية وخطط متابعة وتقارير تقدم مختصرة.</p></div><div class="rounded-[2rem] bg-moss p-6 text-white"><h3 class="font-display text-2xl font-extrabold">أقرب موعد</h3><p class="mt-4 text-white/75">${c.next}</p><button onclick="bookCoach(${c.id})" class="mt-6 rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">احجز الآن</button></div></div>`, 'صفحة تفصيلية');
+  } else if (base.startsWith('/children-programs/')) {
+    const item = childrenPrograms.find(program => program.id === Number(base.split('/').pop())) || childrenPrograms[0];
+    app.innerHTML = catalogDetailPage(item, '/children-programs', 'صفحة عميقة لبرامج الأطفال', 'طلب الخطة');
+  } else if (base.startsWith('/courses/')) {
+    const item = courses.find(course => course.id === Number(base.split('/').pop())) || courses[0];
+    app.innerHTML = catalogDetailPage(item, '/courses', 'صفحة عميقة للبرامج والدورات', 'تسجيل');
+  } else if (base.startsWith('/leadership-programs/')) {
+    const item = leadershipPrograms.find(program => program.id === Number(base.split('/').pop())) || leadershipPrograms[0];
+    app.innerHTML = catalogDetailPage(item, '/leadership-programs', 'صفحة عميقة للبرامج القيادية', 'طلب عرض');
   } else {
-    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/assessments': assessmentsPage, '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/login': loginPage }[base] || notFoundPage)();
+    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/login': loginPage }[base] || notFoundPage)();
   }
   bindDynamicControls();
 }
@@ -266,6 +348,7 @@ function bookCoach(id) { const coach = coaches.find(c => c.id === id); showToast
 
 window.setPage = setPage;
 window.openCoach = openCoach;
+window.navigate = navigate;
 window.bookCoach = bookCoach;
 window.showToast = showToast;
 
