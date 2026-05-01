@@ -1,0 +1,12 @@
+<svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">شعار Adrek الرسمي</title>
+  <desc id="desc">علامة Adrek بأوراق متداخلة ومسار نمو داخل إطار دائري.</desc>
+  <rect width="220" height="220" rx="56" fill="#315C45"/>
+  <circle cx="110" cy="110" r="78" fill="#FBF7ED" fill-opacity="0.12"/>
+  <circle cx="110" cy="110" r="56" fill="#DDEBDD" fill-opacity="0.18"/>
+  <path d="M66 119C66 86.415 92.415 60 125 60H158V93C158 125.585 131.585 152 99 152H66V119Z" fill="#DDEBDD"/>
+  <path d="M87 139C87 106.415 113.415 80 146 80H158V92C158 124.585 131.585 151 99 151H87V139Z" fill="#8AAA79"/>
+  <path d="M62 151C91.5 137.5 119.5 111 145 78" stroke="#FBF7ED" stroke-width="10" stroke-linecap="round"/>
+  <path d="M78 86C78 74.954 86.954 66 98 66H118C118 88.091 100.091 106 78 106V86Z" fill="#EDE2CB"/>
+  <path d="M126 139C126 127.954 134.954 119 146 119H162C162 141.091 144.091 159 122 159H106C106 147.954 114.954 139 126 139Z" fill="#EDE2CB"/>
+</svg>
