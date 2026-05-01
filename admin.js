@@ -52,7 +52,7 @@ function adminTabButton(tab, label) {
 }
 
 function adminShell(body) {
-  const tabs = [['overview', 'نظرة عامة'], ['programs', 'البرامج والمنتجات'], ['subscriptions', 'الاشتراكات'], ['settings', 'الإعدادات العامة'], ['phrases', 'العبارات'], ['support', 'الدعم'], ['security', 'الأمان']];
+  const tabs = [['overview', 'نظرة عامة'], ['bookings', 'الحجوزات'], ['programs', 'البرامج والمنتجات'], ['subscriptions', 'الاشتراكات'], ['settings', 'الإعدادات العامة'], ['phrases', 'العبارات'], ['support', 'الدعم'], ['security', 'الأمان']];
   return shell('لوحة تحكم المالك', 'إدارة مركزية لكل المحتوى مع إضافة وتعديل وحذف وإعادة ترتيب وتحديد ما تم تفعيله وما هو قريبا، مع صفحة عميقة لكل تبويب.', `
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm">
       <div class="flex flex-wrap gap-2">${tabs.map(([tab, label]) => adminTabButton(tab, label)).join('')}</div>
@@ -66,13 +66,45 @@ function adminOverview() {
   const activeCount = managedItems.filter((item) => (item.status || 'تم التفعيل') === 'تم التفعيل').length;
   const openSupport = supportTickets.filter((ticket) => ticket.status !== 'مغلق').length;
   const activeSettings = platformSettings.filter((setting) => setting.status === 'تم التفعيل').length;
+  const pendingBookings = (window.getStoredBookings?.() || []).filter((booking) => booking.status === window.BOOKING_OWNER_CONFIRM_STATUS).length;
   return `<div class="grid gap-5 md:grid-cols-4">
-    ${stat(managedItems.length, 'عنصر قابل للإدارة')}${stat(activeCount, 'تم التفعيل')}${stat(activeSettings, 'إعداد عام نشط')}${stat(openSupport, 'طلبات دعم مفتوحة')}
+    ${stat(managedItems.length, 'عنصر قابل للإدارة')}${stat(pendingBookings, 'حجوزات تنتظر المالك')}${stat(activeSettings, 'إعداد عام نشط')}${stat(openSupport, 'طلبات دعم مفتوحة')}
   </div>
   <div class="mt-6 grid gap-5 lg:grid-cols-2">
-    <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">إجراءات سريعة</h3><div class="mt-5 grid gap-3 sm:grid-cols-2"><button onclick="navigate('/admin/programs')" class="rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">إدارة البرامج</button><button onclick="navigate('/admin/subscriptions')" class="rounded-2xl bg-mint px-5 py-3 font-extrabold text-moss">إدارة الاشتراكات</button><button onclick="navigate('/admin/settings')" class="rounded-2xl bg-sand px-5 py-3 font-extrabold text-moss">الإعدادات العامة</button><button onclick="navigate('/admin/support')" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حل مشاكل الدعم</button></div></div>
+    <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">إجراءات سريعة</h3><div class="mt-5 grid gap-3 sm:grid-cols-2"><button onclick="navigate('/admin/bookings')" class="rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">مراجعة الحجوزات</button><button onclick="navigate('/admin/programs')" class="rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">إدارة البرامج</button><button onclick="navigate('/admin/subscriptions')" class="rounded-2xl bg-mint px-5 py-3 font-extrabold text-moss">إدارة الاشتراكات</button><button onclick="navigate('/admin/settings')" class="rounded-2xl bg-sand px-5 py-3 font-extrabold text-moss">الإعدادات العامة</button></div></div>
     <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">آخر مشاكل الدعم</h3><div class="mt-4 grid gap-3">${supportTickets.slice(0, 3).map((ticket) => `<div class="rounded-2xl bg-mint/55 p-4"><b class="text-moss">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.client)}</b><p class="mt-1 text-sm text-ink/65">${escapeHTML(ticket.issue)}</p></div>`).join('')}</div></div>
   </div>`;
+}
+
+function adminBookingsPage() {
+  const statuses = ['الكل', window.BOOKING_OWNER_CONFIRM_STATUS, window.BOOKING_READY_FOR_PAYMENT_STATUS, window.BOOKING_ALTERNATIVE_STATUS, window.BOOKING_PAID_STATUS];
+  const activeFilter = statuses.includes(state.filter) ? state.filter : 'الكل';
+  const activeSort = ['created', 'client', 'coach', 'status'].includes(state.sort) ? state.sort : 'created';
+  let list = (window.getStoredBookings?.() || []).map((booking, index) => ({ booking, index }))
+    .filter(({ booking }) => activeFilter === 'الكل' || booking.status === activeFilter)
+    .filter(({ booking }) => [booking.id, booking.clientName, booking.coachName, booking.phone, booking.email, booking.status].some((value) => includesTerm(value, state.search)));
+  list.sort((a, b) => (activeSort === 'client' ? a.booking.clientName.localeCompare(b.booking.clientName, 'ar') : activeSort === 'coach' ? a.booking.coachName.localeCompare(b.booking.coachName, 'ar') : activeSort === 'status' ? a.booking.status.localeCompare(b.booking.status, 'ar') : new Date(b.booking.createdAt) - new Date(a.booking.createdAt)));
+  const { pages, visible } = getPagedItems(list);
+  const ownerMessages = (window.getStoredBookingNotifications?.() || []).filter((message) => message.recipientType === 'owner').slice(0, 3);
+  return `${listToolbar({ placeholder: 'ابحث برقم الحجز أو اسم العميل أو المختص', filters: statuses, activeFilter, activeSort, sorts: [{ value: 'created', label: 'الأحدث طلباً' }, { value: 'client', label: 'اسم العميل' }, { value: 'coach', label: 'اسم المختص' }, { value: 'status', label: 'الحالة' }] })}
+    <div class="mt-4 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm"><h3 class="font-display text-xl font-extrabold text-moss">رسائل واتساب للمالك</h3><div class="mt-3 grid gap-2">${ownerMessages.length ? ownerMessages.map((msg) => `<div class="rounded-2xl bg-mint/55 p-3 text-sm leading-7"><b>${escapeHTML(msg.bookingId)} · ${escapeHTML(msg.status)}</b><p>${escapeHTML(msg.message)}</p></div>`).join('') : '<p class="text-sm text-ink/60">لا توجد رسائل للمالك بعد.</p>'}</div></div>
+    <div class="mt-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm"><div class="overflow-x-auto"><table class="w-full min-w-[1100px] text-right"><thead class="bg-moss text-sm text-white"><tr><th class="p-4">الحجز</th><th class="p-4">العميل</th><th class="p-4">المختص</th><th class="p-4">الموعد</th><th class="p-4">الحالة</th><th class="p-4">رسائل العميل</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${visible.map(({ booking }) => adminBookingRow(booking)).join('')}</tbody></table>${visible.length ? '' : emptyState('لا توجد حجوزات حالياً')}</div></div>${pagination(pages)}`;
+}
+
+function adminBookingRow(booking) {
+  const clientMessages = window.bookingNotifications?.(booking.id, 'client') || [];
+  const confirmDisabled = booking.status === window.BOOKING_READY_FOR_PAYMENT_STATUS || booking.status === window.BOOKING_PAID_STATUS;
+  return `<tr class="border-t border-moss/10"><td class="p-4"><b class="text-moss">${escapeHTML(booking.id)}</b><p class="mt-1 text-sm text-ink/55">${escapeHTML(booking.sessionType)} · ${escapeHTML(booking.methodLabel)}</p></td><td class="p-4"><b>${escapeHTML(booking.clientName)}</b><p class="mt-1 text-sm text-ink/55">${escapeHTML(booking.phone)} · ${escapeHTML(booking.email)}</p></td><td class="p-4">${escapeHTML(booking.coachName)}</td><td class="p-4">${window.formatBookingDate(booking.date)}<p class="mt-1 text-sm text-ink/55">${escapeHTML(booking.time)}</p></td><td class="p-4">${statusBadge(booking.status)}</td><td class="p-4"><div class="grid max-w-xs gap-2">${clientMessages.slice(0, 2).map((msg) => `<span class="rounded-xl bg-mint/55 px-3 py-2 text-xs leading-6">${escapeHTML(msg.message)}</span>`).join('') || '<span class="text-xs text-ink/45">لا توجد رسائل</span>'}</div></td><td class="p-4"><div class="flex flex-wrap gap-2"><button ${confirmDisabled ? 'disabled' : ''} onclick="ownerConfirmBooking('${escapeHTML(booking.id)}')" class="table-action rounded-xl bg-moss px-3 py-2 text-xs font-bold text-white">تأكيد</button><button onclick="suggestBookingTime('${escapeHTML(booking.id)}')" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">وقت بديل</button><button onclick="viewStoredBooking('${escapeHTML(booking.id)}')" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">عرض</button><button onclick="deleteStoredBooking('${escapeHTML(booking.id)}')" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`;
+}
+
+function suggestBookingTime(id) {
+  const booking = (window.getStoredBookings?.() || []).find((item) => String(item.id) === String(id));
+  const date = prompt('التاريخ البديل بصيغة YYYY-MM-DD', booking?.date || '');
+  if (date === null) return;
+  const time = prompt('الوقت البديل', booking?.time || '');
+  if (time === null) return;
+  const note = prompt('ملاحظة للعميل', 'هذا أقرب وقت متاح مع المختص.') || '';
+  window.ownerSuggestBookingAlternative(id, date.trim(), time.trim(), note.trim());
 }
 
 function adminCatalogsPage() {
@@ -256,8 +288,8 @@ function adminPage() {
   state.adminTab = state.route.split('/')[2] || 'overview';
   if (state.adminTab === 'subscriptions') state.adminCollection = 'subscriptions';
   if (state.adminTab === 'programs' && state.adminCollection === 'subscriptions') state.adminCollection = 'programs';
-  const body = state.adminTab === 'overview' ? adminOverview() : state.adminTab === 'settings' ? adminSettingsPage() : state.adminTab === 'phrases' ? adminPhrasesPage() : state.adminTab === 'support' ? adminSupportPage() : state.adminTab === 'security' ? adminSecurityPage() : adminCatalogsPage();
+  const body = state.adminTab === 'overview' ? adminOverview() : state.adminTab === 'bookings' ? adminBookingsPage() : state.adminTab === 'settings' ? adminSettingsPage() : state.adminTab === 'phrases' ? adminPhrasesPage() : state.adminTab === 'support' ? adminSupportPage() : state.adminTab === 'security' ? adminSecurityPage() : adminCatalogsPage();
   return adminShell(body);
 }
 
-Object.assign(window, { adminPage, ownerLogin, ownerLogout, createAdminItem, editAdminItem, deleteAdminItem, moveAdminItem, toggleAdminStatus, setAdminCollection, adminViewItem, createPhrase, editPhrase, togglePhraseStatus, deletePhrase, createSupportTicket, editSupportTicket, closeSupportTicket, deleteSupportTicket, changeOwnerPassword });
+Object.assign(window, { adminPage, ownerLogin, ownerLogout, adminBookingsPage, suggestBookingTime, createAdminItem, editAdminItem, deleteAdminItem, moveAdminItem, toggleAdminStatus, setAdminCollection, adminViewItem, createPhrase, editPhrase, togglePhraseStatus, deletePhrase, createSupportTicket, editSupportTicket, closeSupportTicket, deleteSupportTicket, changeOwnerPassword });
