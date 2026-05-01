@@ -18,8 +18,7 @@ const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'cou
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
-const DEFAULT_OWNER_PASSWORD = '12345678';
-const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || DEFAULT_OWNER_PASSWORD;
+const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || null;
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -32,10 +31,20 @@ const STATIC_FILES = new Map([
 const scrypt = promisify(crypto.scrypt);
 const adminSessions = new Map();
 
+function isLocalDatabaseHost(hostname = '') {
+  return ['localhost', '127.0.0.1', '::1'].includes(hostname) || hostname.endsWith('.local');
+}
+
+function resolveConnectionString() {
+  return process.env.DATABASE_URL || process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_PUBLIC_URL || process.env.POSTGRES_URL || process.env.POSTGRESQL_URL || '';
+}
+
 function createPoolConfig() {
-  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRESQL_URL;
+  const connectionString = resolveConnectionString();
   const sslMode = connectionString ? new URL(connectionString).searchParams.get('sslmode') : '';
-  const sslEnabled = process.env.PGSSL === 'true' || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase());
+  const sslEnabled = process.env.PGSSL === 'true'
+    || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase())
+    || (connectionString && !isLocalDatabaseHost(new URL(connectionString).hostname));
   const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED !== 'false';
   if (connectionString) {
     return sslEnabled ? { connectionString, ssl: { rejectUnauthorized } } : { connectionString };

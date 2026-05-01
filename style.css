@@ -201,7 +201,7 @@ input::placeholder, textarea::placeholder { color: rgba(36, 51, 44, .45); }
 
 @keyframes marqueeFlow {
   from { transform: translateX(0); }
-  to { transform: translateX(45%); }
+  to { transform: translateX(-50%); }
 }
 
 .floating-insight {

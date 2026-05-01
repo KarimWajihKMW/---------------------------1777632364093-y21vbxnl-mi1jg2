@@ -15,6 +15,7 @@ const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
 const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
+const HOME_MOTION_LABELS = ['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة'];
 
 const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const includesTerm = (value = '', term = '') => String(value).toLocaleLowerCase('ar').includes(String(term).toLocaleLowerCase('ar'));
@@ -384,7 +385,7 @@ function homePage() {
   <section class="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
     <div class="marquee-shell rounded-[2rem] border border-white/70 bg-white/65 px-3 py-4 shadow-sm backdrop-blur-xl">
       <div class="marquee-track">
-        ${[...['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة'], ...['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة']].map((label) => motionPill(label)).join('')}
+        ${HOME_MOTION_LABELS.concat(HOME_MOTION_LABELS).map((label) => motionPill(label)).join('')}
       </div>
     </div>
   </section>
