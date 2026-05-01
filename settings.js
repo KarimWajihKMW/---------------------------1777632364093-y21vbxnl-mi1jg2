@@ -1,36 +1,12 @@
 'use strict';
 
-const settingsLocalStorage = window.adrekStorage?.local || {
-  getItem(key) { try { return window.localStorage.getItem(key); } catch (error) { return null; } },
-  setItem(key, value) { try { window.localStorage.setItem(key, String(value)); } catch (error) {} }
-};
-
 const PLATFORM_SETTING_TYPES = ['الهوية', 'التواصل', 'الحجوزات', 'المدفوعات', 'الخصوصية', 'الإشعارات', 'التقارير'];
 const PLATFORM_SETTING_VISIBILITY = ['عام', 'داخلي', 'للمالك فقط'];
-const platformSettings = [
-  { id: 'brand-name', title: 'اسم المنصة', group: 'الهوية', value: 'Adrek', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-15', description: 'الاسم المعروض في رأس الموقع والتقارير والرسائل النظامية.' },
-  { id: 'support-email', title: 'بريد الدعم الرئيسي', group: 'التواصل', value: 'care@adrek.example', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-14', description: 'البريد الذي يستقبل طلبات العملاء ومشاكل الدعم.' },
-  { id: 'default-session-duration', title: 'مدة الجلسة الافتراضية', group: 'الحجوزات', value: '50 دقيقة', visibility: 'داخلي', status: 'تم التفعيل', updated: '2026-02-12', description: 'المدة المقترحة عند إنشاء مواعيد جديدة للمستشارين والكوتشز.' },
-  { id: 'booking-window', title: 'نافذة الحجز المسبق', group: 'الحجوزات', value: '14 يوم', visibility: 'داخلي', status: 'تم التفعيل', updated: '2026-02-10', description: 'أقصى فترة متاحة أمام المستفيد لاختيار موعد جلسة قادمة.' },
-  { id: 'currency', title: 'عملة التسعير', group: 'المدفوعات', value: 'ريال سعودي', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-09', description: 'العملة المستخدمة في بطاقات البرامج والاشتراكات والفواتير.' },
-  { id: 'privacy-level', title: 'مستوى الخصوصية', group: 'الخصوصية', value: 'خصوصية عالية وتشفير للملفات', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-08', description: 'نص يوضح مستوى حماية بيانات المستفيدين في المنصة.' },
-  { id: 'sms-notifications', title: 'تنبيهات الرسائل القصيرة', group: 'الإشعارات', value: 'تذكير قبل الجلسة بـ 24 ساعة', visibility: 'داخلي', status: 'قريبا', updated: '2026-02-06', description: 'سياسة إرسال رسائل التذكير للمستفيدين ومزودي الخدمة.' },
-  { id: 'report-watermark', title: 'وسم التقارير', group: 'التقارير', value: 'تقرير Adrek المهني', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-05', description: 'الوسم النصي الذي يظهر داخل ملفات التقارير المهنية.' }
-];
+const platformSettings = [];
 
-function savePlatformSettings() { settingsLocalStorage.setItem('adrek-admin-platform-settings', JSON.stringify(platformSettings)); }
-function loadPlatformSettings() {
-  const saved = settingsLocalStorage.getItem('adrek-admin-platform-settings');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) platformSettings.splice(0, platformSettings.length, ...parsed);
-    } catch (error) {
-      console.warn('تعذر تحميل الإعدادات العامة', error);
-    }
-  }
+async function savePlatformSettings() {
+  await window.adrekApi.saveCollection('platformSettings', platformSettings);
 }
-loadPlatformSettings();
 
 function settingPrompt(setting = {}) {
   const title = prompt('اسم الإعداد', setting.title || '');
@@ -59,36 +35,36 @@ function settingPrompt(setting = {}) {
   };
 }
 
-function createPlatformSetting() {
+async function createPlatformSetting() {
   const setting = settingPrompt();
   if (!setting) return;
   platformSettings.unshift(setting);
-  savePlatformSettings();
+  await savePlatformSettings();
   showToast('تمت إضافة الإعداد العام');
   render();
 }
 
-function editPlatformSetting(index) {
+async function editPlatformSetting(index) {
   const setting = settingPrompt(platformSettings[index]);
   if (!setting) return;
   platformSettings[index] = setting;
-  savePlatformSettings();
+  await savePlatformSettings();
   showToast('تم حفظ الإعداد العام');
   render();
 }
 
-function togglePlatformSetting(index) {
+async function togglePlatformSetting(index) {
   platformSettings[index].status = platformSettings[index].status === 'تم التفعيل' ? 'قريبا' : 'تم التفعيل';
   platformSettings[index].updated = new Date().toISOString().slice(0, 10);
-  savePlatformSettings();
+  await savePlatformSettings();
   showToast('تم تحديث حالة الإعداد');
   render();
 }
 
-function deletePlatformSetting(index) {
+async function deletePlatformSetting(index) {
   if (!confirm('حذف هذا الإعداد العام؟')) return;
   platformSettings.splice(index, 1);
-  savePlatformSettings();
+  await savePlatformSettings();
   showToast('تم حذف الإعداد العام');
   if (state.route.startsWith('/admin/settings/')) navigate('/admin/settings'); else render();
 }
@@ -114,7 +90,7 @@ function adminSettingsDetail(setting, index) {
 function adminSettingsPage() {
   const requestedId = decodeURIComponent(state.route.split('/')[3] || '');
   if (requestedId) {
-    const index = platformSettings.findIndex(setting => setting.id === requestedId);
+    const index = platformSettings.findIndex((setting) => setting.id === requestedId);
     if (index >= 0) return adminSettingsDetail(platformSettings[index], index);
   }
 
@@ -123,8 +99,8 @@ function adminSettingsPage() {
   const activeSort = ['title', 'group', 'updated', 'status'].includes(state.sort) ? state.sort : 'updated';
   let list = platformSettings.map((setting, index) => ({ setting, index }))
     .filter(({ setting }) => activeFilter === 'الكل' || setting.group === activeFilter || setting.status === activeFilter)
-    .filter(({ setting }) => [setting.title, setting.group, setting.value, setting.visibility, setting.status, setting.description].some(value => includesTerm(value, state.search)));
-  list.sort((a, b) => activeSort === 'title' ? a.setting.title.localeCompare(b.setting.title, 'ar') : activeSort === 'group' ? a.setting.group.localeCompare(b.setting.group, 'ar') : activeSort === 'status' ? a.setting.status.localeCompare(b.setting.status, 'ar') : new Date(b.setting.updated) - new Date(a.setting.updated));
+    .filter(({ setting }) => [setting.title, setting.group, setting.value, setting.visibility, setting.status, setting.description].some((value) => includesTerm(value, state.search)));
+  list.sort((a, b) => (activeSort === 'title' ? a.setting.title.localeCompare(b.setting.title, 'ar') : activeSort === 'group' ? a.setting.group.localeCompare(b.setting.group, 'ar') : activeSort === 'status' ? a.setting.status.localeCompare(b.setting.status, 'ar') : new Date(b.setting.updated) - new Date(a.setting.updated)));
   const { pages, visible } = getPagedItems(list);
 
   return `<div class="rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm">${listToolbar({ placeholder: 'ابحث في اسم الإعداد أو قيمته أو وصفه', filters, activeFilter, activeSort, sorts: [{ value: 'updated', label: 'الأحدث تحديثاً' }, { value: 'title', label: 'اسم الإعداد' }, { value: 'group', label: 'المجموعة' }, { value: 'status', label: 'الحالة' }] })}<button onclick="createPlatformSetting()" class="mt-4 rounded-2xl bg-moss px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">إضافة إعداد عام</button></div>
