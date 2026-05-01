@@ -50,6 +50,12 @@ function parseConnectionStringUrl(connectionString) {
   }
 }
 
+function resolveRejectUnauthorized(sslMode) {
+  if (process.env.PGSSL_REJECT_UNAUTHORIZED === 'true') return true;
+  if (process.env.PGSSL_REJECT_UNAUTHORIZED === 'false') return false;
+  return ['verify-ca', 'verify-full'].includes(sslMode);
+}
+
 function resolveSslConfig() {
   const connectionString = resolveConnectionString();
   const connectionUrl = parseConnectionStringUrl(connectionString);
@@ -62,12 +68,7 @@ function resolveSslConfig() {
   const sslEnabled = process.env.PGSSL === 'true'
     || ['require', 'verify-ca', 'verify-full'].includes(sslMode)
     || (databaseHost && !isLocalDatabaseHost(databaseHost));
-  const rejectUnauthorizedEnv = process.env.PGSSL_REJECT_UNAUTHORIZED;
-  const rejectUnauthorized = rejectUnauthorizedEnv === 'true'
-    ? true
-    : rejectUnauthorizedEnv === 'false'
-      ? false
-      : ['verify-ca', 'verify-full'].includes(sslMode);
+  const rejectUnauthorized = resolveRejectUnauthorized(sslMode);
   return { connectionString, sslEnabled, rejectUnauthorized };
 }
 
