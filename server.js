@@ -13,17 +13,18 @@ const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 const ROOT_DIR = __dirname;
 const OWNER_CREDENTIALS_KEY = 'owner_credentials';
+const USERS_TABLE = 'users';
+const SESSIONS_TABLE = 'sessions';
 const COLLECTION_NAMES = new Set(Object.keys(seedCollections));
 const COLLECTION_TABLE_NAMES = new Map(
   [...COLLECTION_NAMES].map((name) => [name, name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()])
 );
+const ALLOWED_TABLE_NAMES = new Set([...COLLECTION_TABLE_NAMES.values(), USERS_TABLE, SESSIONS_TABLE]);
 const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'courses', 'leadership', 'assessments', 'reports', 'subscriptions']);
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
 const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || null;
-const USERS_TABLE = 'users';
-const SESSIONS_TABLE = 'sessions';
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -47,10 +48,10 @@ function resolveConnectionString() {
 }
 
 function quoteIdentifier(identifier) {
-  if (!/^[a-z_][a-z0-9_]*$/i.test(identifier)) {
+  if (!ALLOWED_TABLE_NAMES.has(identifier)) {
     throw new Error(`Invalid PostgreSQL identifier: ${identifier}`);
   }
-  return `"${identifier.replace(/"/g, '""')}"`;
+  return `"${identifier}"`;
 }
 
 function getCollectionTableName(collectionName) {
@@ -350,17 +351,22 @@ async function readJsonBody(request) {
 
 async function createSessionToken(username, client = pool) {
   await cleanupExpiredSessions(client);
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + OWNER_SESSION_TTL_MS);
-  adminSessions.set(token, expiresAt.getTime());
-  await client.query(
-    `INSERT INTO ${quoteIdentifier(SESSIONS_TABLE)} (token, username, expires_at)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (token)
-     DO UPDATE SET username = EXCLUDED.username, expires_at = EXCLUDED.expires_at`,
-    [token, username, expiresAt.toISOString()]
-  );
-  return token;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + OWNER_SESSION_TTL_MS);
+    try {
+      await client.query(
+        `INSERT INTO ${quoteIdentifier(SESSIONS_TABLE)} (token, username, expires_at)
+         VALUES ($1, $2, $3)`,
+        [token, username, expiresAt.toISOString()]
+      );
+      adminSessions.set(token, expiresAt.getTime());
+      return token;
+    } catch (error) {
+      if (error.code !== '23505') throw error;
+    }
+  }
+  throw new Error('Failed to create a unique owner session token.');
 }
 
 function getRequestToken(request) {
@@ -440,7 +446,7 @@ async function handleCollectionSave(request, response, pathname) {
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    throw new Error(`Failed to save collection "${collectionName}": ${error.message}`);
   } finally {
     client.release();
   }
