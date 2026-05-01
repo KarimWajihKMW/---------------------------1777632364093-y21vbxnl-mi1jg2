@@ -18,7 +18,7 @@ const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'cou
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
-const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD || '';
+const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || null;
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -310,8 +310,11 @@ async function handleOwnerPasswordChange(request, response) {
   if (!requireAdmin(request, response)) return;
   const body = await readJsonBody(request);
   const credentials = await getOwnerCredentials();
+  if (typeof body?.oldPassword !== 'string' || !body.oldPassword.trim()) {
+    return sendJson(response, 400, { error: 'كلمة المرور الحالية مطلوبة' });
+  }
 
-  if (!await verifyPassword(body?.oldPassword || '', credentials)) {
+  if (!await verifyPassword(body.oldPassword, credentials)) {
     return sendJson(response, 400, { error: 'كلمة المرور الحالية غير صحيحة' });
   }
 

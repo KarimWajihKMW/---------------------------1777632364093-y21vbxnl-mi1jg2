@@ -14,7 +14,7 @@ function isOwnerLoggedIn() {
 }
 
 function ownerLoginPage() {
-  return shell('دخول لوحة المالك', 'صفحة خاصة لإدارة البرامج والاشتراكات والمنتجات والعبارات والدعم. اسم المستخدم الافتراضي هو admin وكلمة المرور الأولية تُحدد عبر متغير OWNER_INITIAL_PASSWORD على الخادم ثم يمكن تغييرها من تبويب الأمان.', `
+  return shell('دخول لوحة المالك', 'صفحة خاصة لإدارة البرامج والاشتراكات والمنتجات والعبارات والدعم. اسم المستخدم الافتراضي هو admin ويجب ضبط OWNER_INITIAL_PASSWORD بقيمة غير فارغة قبل أول تشغيل للخادم، ثم يمكن تغييرها من تبويب الأمان.', `
     <form class="mx-auto max-w-md rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); ownerLogin()">
       <div class="grid gap-4">
         <input id="ownerUser" autocomplete="username" required placeholder="اسم المستخدم" class="rounded-2xl border border-moss/10 px-4 py-3">
