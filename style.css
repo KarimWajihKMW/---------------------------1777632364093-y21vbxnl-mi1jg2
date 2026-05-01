@@ -27,14 +27,6 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
   display: block;
   border-radius: 0.75rem;
 }
-.logo-upload-button {
-  white-space: nowrap;
-}
-.logo-upload-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(138, 170, 121, .28);
-}
-
 .nav-link {
   display: block;
   border-radius: 1rem;
@@ -123,10 +115,6 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
 .table-action:hover { transform: translateY(-2px); }
 
 .modal-backdrop { background: rgba(23, 35, 29, .42); backdrop-filter: blur(10px); }
-
-@media (max-width: 420px) {
-  .logo-upload-button { padding-inline: .65rem; font-size: .68rem; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
