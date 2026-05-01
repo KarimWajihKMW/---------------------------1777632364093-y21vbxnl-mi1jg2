@@ -41,6 +41,8 @@ const state = {
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
+const defaultLogoDataUri = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23ffffff'/%3E%3Cpath d='M18 39c13-1 24-11 28-24 5 17-2 31-16 35-8 2-14-2-12-11Z' fill='%238AAA79'/%3E%3Cpath d='M23 42c7-10 14-16 24-22' stroke='%23315C45' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E";
+const logoStorageKey = 'adrekUploadedLogo';
 
 function navigate(path) {
   if (window.location.pathname !== path) history.pushState({}, '', path);
@@ -58,6 +60,59 @@ function showToast(message) {
     toast.classList.add('opacity-0', 'translate-y-6');
     toast.classList.remove('opacity-100', 'translate-y-0');
   }, 2400);
+}
+
+function updateBrandLogos(src) {
+  const logoSrc = src || defaultLogoDataUri;
+  document.querySelectorAll('.brand-logo').forEach((logo) => {
+    logo.src = logoSrc;
+    logo.alt = src ? 'الشعار الذي تم تحميله من الصور' : 'مكان الشعار المخصص';
+  });
+  document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"]').forEach((icon) => {
+    icon.href = logoSrc;
+  });
+}
+
+function initializeLogoUpload() {
+  const uploadInput = document.getElementById('logoUpload');
+  let savedLogo = '';
+  try {
+    savedLogo = localStorage.getItem(logoStorageKey) || '';
+  } catch (error) {
+    savedLogo = '';
+  }
+  updateBrandLogos(savedLogo);
+
+  if (!uploadInput) return;
+  uploadInput.addEventListener('change', (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('الرجاء اختيار ملف صورة للشعار');
+      uploadInput.value = '';
+      return;
+    }
+    if (file.size > 2.5 * 1024 * 1024) {
+      showToast('حجم الشعار كبير، اختر صورة أقل من 2.5MB');
+      uploadInput.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const uploadedLogo = reader.result;
+      updateBrandLogos(uploadedLogo);
+      try {
+        localStorage.setItem(logoStorageKey, uploadedLogo);
+      } catch (error) {
+        showToast('تم عرض الشعار، لكن تعذر حفظه محلياً');
+        return;
+      }
+      showToast('تم تحميل الشعار من الصور بنجاح');
+    };
+    reader.onerror = () => showToast('تعذر قراءة صورة الشعار');
+    reader.readAsDataURL(file);
+  });
 }
 
 function shell(title, subtitle, body, eyebrow = 'Adrek') {
@@ -246,4 +301,7 @@ window.showToast = showToast;
 window.addEventListener('popstate', () => { state.route = window.location.pathname; render(); });
 document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('navLinks').classList.toggle('hidden'));
 
-document.addEventListener('DOMContentLoaded', render);
+document.addEventListener('DOMContentLoaded', () => {
+  initializeLogoUpload();
+  render();
+});
