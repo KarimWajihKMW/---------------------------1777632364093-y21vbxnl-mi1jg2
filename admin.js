@@ -1,7 +1,18 @@
 'use strict';
 
+const ownerLocalStorage = window.adrekStorage?.local || {
+  getItem(key) { try { return window.localStorage.getItem(key); } catch (error) { return null; } },
+  setItem(key, value) { try { window.localStorage.setItem(key, String(value)); } catch (error) {} },
+  removeItem(key) { try { window.localStorage.removeItem(key); } catch (error) {} }
+};
+const ownerSessionStorage = window.adrekStorage?.session || {
+  getItem(key) { try { return window.sessionStorage.getItem(key); } catch (error) { return null; } },
+  setItem(key, value) { try { window.sessionStorage.setItem(key, String(value)); } catch (error) {} },
+  removeItem(key) { try { window.sessionStorage.removeItem(key); } catch (error) {} }
+};
+
 function isOwnerLoggedIn() {
-  return sessionStorage.getItem(OWNER_AUTH_KEY) === 'true';
+  return ownerSessionStorage.getItem(OWNER_AUTH_KEY) === 'true';
 }
 
 function ownerLoginPage() {
@@ -18,9 +29,9 @@ function ownerLoginPage() {
 function ownerLogin() {
   const user = document.getElementById('ownerUser')?.value.trim();
   const pass = document.getElementById('ownerPass')?.value;
-  const savedPassword = localStorage.getItem(OWNER_PASSWORD_KEY) || OWNER_DEFAULT_PASSWORD;
+  const savedPassword = ownerLocalStorage.getItem(OWNER_PASSWORD_KEY) || OWNER_DEFAULT_PASSWORD;
   if (user === OWNER_USERNAME && pass === savedPassword) {
-    sessionStorage.setItem(OWNER_AUTH_KEY, 'true');
+    ownerSessionStorage.setItem(OWNER_AUTH_KEY, 'true');
     showToast('تم دخول لوحة المالك');
     navigate('/admin/overview');
   } else {
@@ -29,7 +40,7 @@ function ownerLogin() {
 }
 
 function ownerLogout() {
-  sessionStorage.removeItem(OWNER_AUTH_KEY);
+  ownerSessionStorage.removeItem(OWNER_AUTH_KEY);
   showToast('تم تسجيل خروج المالك');
   navigate('/admin');
 }
@@ -103,8 +114,8 @@ function toggleAdminStatus(key, index) { const item = adminCollections[key].item
 function setAdminCollection(key) { state.adminCollection = key; state.page = 1; state.search = ''; state.filter = 'الكل'; state.sort = 'order'; render(); }
 function adminViewItem(key, index) { const config = adminCollections[key]; const item = config.items[index]; if (config.route.startsWith('/admin')) return showToast(`${config.label}: ${item.title || item.name}`); navigate(`${config.route}/${item.id}`); }
 
-function savePhrases() { localStorage.setItem('adrek-admin-phrases', JSON.stringify(ownerPhrases)); }
-function loadPhrases() { const saved = localStorage.getItem('adrek-admin-phrases'); if (saved) { try { const parsed = JSON.parse(saved); if (Array.isArray(parsed)) ownerPhrases.splice(0, ownerPhrases.length, ...parsed); } catch (error) { console.warn(error); } } }
+function savePhrases() { ownerLocalStorage.setItem('adrek-admin-phrases', JSON.stringify(ownerPhrases)); }
+function loadPhrases() { const saved = ownerLocalStorage.getItem('adrek-admin-phrases'); if (saved) { try { const parsed = JSON.parse(saved); if (Array.isArray(parsed)) ownerPhrases.splice(0, ownerPhrases.length, ...parsed); } catch (error) { console.warn(error); } } }
 loadPhrases();
 function phrasePrompt(phrase = {}) { const area = prompt('موضع العبارة', phrase.area || 'الرئيسية'); if (area === null) return null; const text = prompt('نص العبارة', phrase.text || ''); if (text === null) return null; const status = prompt('الحالة: تم التفعيل أو قريبا', phrase.status || 'تم التفعيل'); if (status === null) return null; return { ...phrase, id: phrase.id || Date.now(), area: area.trim(), text: text.trim(), status: ADMIN_STATUS_OPTIONS.includes(status) ? status : 'تم التفعيل' }; }
 function createPhrase() { const phrase = phrasePrompt(); if (!phrase) return; ownerPhrases.push(phrase); savePhrases(); showToast('تمت إضافة العبارة'); render(); }
@@ -122,8 +133,8 @@ function adminPhrasesPage() {
   return `${listToolbar({ placeholder: 'ابحث في العبارات أو موضعها', filters: statuses, activeFilter, activeSort, sorts: [{ value: 'area', label: 'الموضع' }, { value: 'text', label: 'العبارة' }, { value: 'status', label: 'الحالة' }] })}<button onclick="createPhrase()" class="mt-4 rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">إضافة عبارة</button><div class="mt-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm"><div class="overflow-x-auto"><table class="w-full min-w-[760px] text-right"><thead class="bg-moss text-sm text-white"><tr><th class="p-4">الموضع</th><th class="p-4">العبارة</th><th class="p-4">الحالة</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${visible.map(({ phrase, index }) => `<tr class="border-t border-moss/10"><td class="p-4 font-bold text-moss">${escapeHTML(phrase.area)}</td><td class="p-4">${escapeHTML(phrase.text)}</td><td class="p-4">${statusBadge(phrase.status)}</td><td class="p-4"><div class="flex gap-2"><button onclick="editPhrase(${index})" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">تعديل</button><button onclick="togglePhraseStatus(${index})" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">الحالة</button><button onclick="deletePhrase(${index})" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`).join('')}</tbody></table>${visible.length ? '' : emptyState()}</div></div>${pagination(pages)}`;
 }
 
-function saveSupportTickets() { localStorage.setItem('adrek-admin-support', JSON.stringify(supportTickets)); }
-function loadSupportTickets() { const saved = localStorage.getItem('adrek-admin-support'); if (saved) { try { const parsed = JSON.parse(saved); if (Array.isArray(parsed)) supportTickets.splice(0, supportTickets.length, ...parsed); } catch (error) { console.warn(error); } } }
+function saveSupportTickets() { ownerLocalStorage.setItem('adrek-admin-support', JSON.stringify(supportTickets)); }
+function loadSupportTickets() { const saved = ownerLocalStorage.getItem('adrek-admin-support'); if (saved) { try { const parsed = JSON.parse(saved); if (Array.isArray(parsed)) supportTickets.splice(0, supportTickets.length, ...parsed); } catch (error) { console.warn(error); } } }
 loadSupportTickets();
 function supportPrompt(ticket = {}) { const client = prompt('اسم العميل', ticket.client || ''); if (client === null) return null; const issue = prompt('وصف المشكلة', ticket.issue || ''); if (issue === null) return null; const priority = prompt('الأولوية', ticket.priority || 'متوسط'); if (priority === null) return null; const status = prompt('الحالة', ticket.status || 'مفتوح'); if (status === null) return null; const resolution = prompt('الحل أو خطة المعالجة', ticket.resolution || ''); if (resolution === null) return null; return { ...ticket, id: ticket.id || `SUP-${Date.now().toString().slice(-5)}`, client: client.trim(), issue: issue.trim(), priority: priority.trim(), status: status.trim(), resolution: resolution.trim() }; }
 function createSupportTicket() { const ticket = supportPrompt(); if (!ticket) return; supportTickets.unshift(ticket); saveSupportTickets(); showToast('تمت إضافة مشكلة الدعم'); render(); }
@@ -148,10 +159,10 @@ function adminSecurityPage() {
 function changeOwnerPassword() {
   const oldPass = document.getElementById('oldOwnerPass')?.value;
   const newPass = document.getElementById('newOwnerPass')?.value;
-  const savedPassword = localStorage.getItem(OWNER_PASSWORD_KEY) || OWNER_DEFAULT_PASSWORD;
+  const savedPassword = ownerLocalStorage.getItem(OWNER_PASSWORD_KEY) || OWNER_DEFAULT_PASSWORD;
   if (oldPass !== savedPassword) return showToast('كلمة المرور الحالية غير صحيحة');
   if (!newPass || newPass.length < 8) return showToast('كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل');
-  localStorage.setItem(OWNER_PASSWORD_KEY, newPass);
+  ownerLocalStorage.setItem(OWNER_PASSWORD_KEY, newPass);
   showToast('تم تغيير كلمة مرور المالك');
 }
 
