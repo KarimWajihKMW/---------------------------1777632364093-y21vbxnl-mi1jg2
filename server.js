@@ -24,6 +24,7 @@ const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'cou
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
+const MAX_SESSION_TOKEN_RETRIES = 5;
 const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || null;
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -351,7 +352,7 @@ async function readJsonBody(request) {
 
 async function createSessionToken(username, client = pool) {
   await cleanupExpiredSessions(client);
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_SESSION_TOKEN_RETRIES; attempt += 1) {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + OWNER_SESSION_TTL_MS);
     try {
