@@ -17,6 +17,13 @@ const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
 const BOOKING_STORAGE_KEY = 'adrek-confirmed-bookings';
 const PAYMENT_STORAGE_KEY = 'adrek-booking-payments';
+const BOOKING_NOTIFICATIONS_KEY = 'adrek-booking-whatsapp-notifications';
+const PAYMENT_CONFIRM_WINDOW_HOURS = 2;
+const OWNER_WHATSAPP_NUMBER = '+966500000000';
+const BOOKING_OWNER_CONFIRM_STATUS = 'بانتظار اعتماد المالك';
+const BOOKING_READY_FOR_PAYMENT_STATUS = 'مؤكد من المالك بانتظار الدفع';
+const BOOKING_ALTERNATIVE_STATUS = 'وقت بديل مقترح';
+const BOOKING_PAID_STATUS = 'مدفوع ومؤكد نهائياً';
 const BOOKING_METHODS = [
   { id: 'video', label: 'جلسة مرئية', icon: '🎥', description: 'رابط اجتماع آمن يرسل بعد التأكيد مع تذكير قبل الموعد.' },
   { id: 'voice', label: 'اتصال فقط', icon: '📞', description: 'اتصال صوتي خاص لمن يفضل الخصوصية أو ضعف الاتصال المرئي.' }
@@ -600,15 +607,65 @@ function getStoredPayments() {
   try { const value = JSON.parse(adrekStorage.local.getItem(PAYMENT_STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch (error) { return []; }
 }
 function saveStoredPayments(items) { adrekStorage.local.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(items.slice(0, 30))); }
+function getStoredBookingNotifications() {
+  try { const value = JSON.parse(adrekStorage.local.getItem(BOOKING_NOTIFICATIONS_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch (error) { return []; }
+}
+function saveStoredBookingNotifications(items) { adrekStorage.local.setItem(BOOKING_NOTIFICATIONS_KEY, JSON.stringify(items.slice(0, 120))); }
+function addBookingNotification(bookingId, recipientType, recipient, message, messageType = 'whatsapp') {
+  const notification = { id: `NT-${Date.now().toString().slice(-7)}-${Math.floor(Math.random() * 900 + 100)}`, bookingId, recipientType, recipient, channel: 'WhatsApp', messageType, message, status: 'جاهز للإرسال', createdAt: new Date().toISOString() };
+  saveStoredBookingNotifications([notification, ...getStoredBookingNotifications()]);
+  return notification;
+}
+function bookingNotifications(bookingId, recipientType = '') {
+  return getStoredBookingNotifications().filter((item) => String(item.bookingId) === String(bookingId) && (!recipientType || item.recipientType === recipientType));
+}
 function findBookingById(id) { return getStoredBookings().find((booking) => String(booking.id) === String(id)) || null; }
 function findPaymentByBookingId(id) { return getStoredPayments().find((payment) => String(payment.bookingId) === String(id) && payment.status === 'paid') || null; }
-function updateStoredBookingStatus(id, status, payment = null) {
+function paymentDeadlineFromNow() { return new Date(Date.now() + PAYMENT_CONFIRM_WINDOW_HOURS * 60 * 60 * 1000).toISOString(); }
+function isPaymentWindowOpen(booking) { return !booking?.paymentDeadline || new Date(booking.paymentDeadline).getTime() >= Date.now(); }
+function updateStoredBookingStatus(id, status, payment = null, extras = {}) {
   const bookings = getStoredBookings();
   const index = bookings.findIndex((booking) => String(booking.id) === String(id));
   if (index < 0) return null;
-  bookings[index] = { ...bookings[index], status, paymentStatus: payment?.status || bookings[index].paymentStatus || 'pending', paymentId: payment?.transactionId || bookings[index].paymentId || '', paidAt: payment?.paidAt || bookings[index].paidAt || '' };
+  bookings[index] = { ...bookings[index], ...extras, status, paymentStatus: payment?.status || extras.paymentStatus || bookings[index].paymentStatus || 'pending', paymentId: payment?.transactionId || bookings[index].paymentId || '', paidAt: payment?.paidAt || bookings[index].paidAt || '' };
   saveStoredBookings(bookings);
   return bookings[index];
+}
+function ownerConfirmBooking(id, overrides = {}) {
+  const booking = findBookingById(id);
+  if (!booking) return showToast('تعذر العثور على الحجز');
+  const confirmedAt = new Date().toISOString();
+  const updated = updateStoredBookingStatus(id, BOOKING_READY_FOR_PAYMENT_STATUS, null, { ...overrides, confirmedAt, paymentDeadline: paymentDeadlineFromNow(), paymentStatus: 'pending' });
+  addBookingNotification(id, 'client', updated.phone, `تم تأكيد حجزك رقم ${id} مع ${updated.coachName} بتاريخ ${formatBookingDate(updated.date)} الساعة ${updated.time}. لإتمام الدفع لديك ساعتان فقط حتى ${new Date(updated.paymentDeadline).toLocaleString('ar-SA')}.`, 'client-confirmed');
+  showToast('تم تأكيد الحجز وإرسال رسالة واتساب للعميل');
+  render();
+}
+function ownerSuggestBookingAlternative(id, alternativeDate, alternativeTime, note = '') {
+  const booking = findBookingById(id);
+  if (!booking) return showToast('تعذر العثور على الحجز');
+  if (!alternativeDate || !alternativeTime) return showToast('حدد تاريخ ووقت بديلين');
+  const updated = updateStoredBookingStatus(id, BOOKING_ALTERNATIVE_STATUS, null, { alternativeDate, alternativeTime, alternativeNote: note, paymentStatus: 'pending' });
+  addBookingNotification(id, 'client', updated.phone, `تم اقتراح وقت بديل لحجزك رقم ${id} مع ${updated.coachName}: ${formatBookingDate(alternativeDate)} الساعة ${alternativeTime}. يمكنك قبول المقترح من صفحة التأكيد.`, 'client-alternative');
+  showToast('تم إرسال اقتراح الوقت البديل للعميل عبر واتساب');
+  render();
+}
+function acceptSuggestedBooking(id) {
+  const booking = findBookingById(id);
+  if (!booking || booking.status !== BOOKING_ALTERNATIVE_STATUS) return showToast('لا يوجد وقت بديل قابل للقبول');
+  ownerConfirmBooking(id, { date: booking.alternativeDate, time: booking.alternativeTime, acceptedAlternativeAt: new Date().toISOString() });
+  navigate('/booking/confirmation');
+}
+function deleteStoredBooking(id) {
+  saveStoredBookings(getStoredBookings().filter((booking) => String(booking.id) !== String(id)));
+  saveStoredBookingNotifications(getStoredBookingNotifications().filter((item) => String(item.bookingId) !== String(id)));
+  showToast('تم حذف الحجز من سجل المالك');
+  render();
+}
+function viewStoredBooking(id) {
+  const booking = findBookingById(id);
+  if (!booking) return showToast('تعذر العثور على الحجز');
+  state.bookingConfirmation = booking;
+  navigate('/booking/confirmation');
 }
 function bookingCoach() { return coaches.find((coach) => String(coach.id) === String(state.booking.coachId)) || null; }
 function bookingMethod() { return BOOKING_METHODS.find((method) => method.id === state.booking.method) || BOOKING_METHODS[0]; }
@@ -680,12 +737,14 @@ function confirmBooking() {
   const coach = bookingCoach();
   if (error) return showToast(error);
   if (!coach) return showToast('اختر مختصاً متاحاً قبل التأكيد.');
-  const item = { ...state.booking, id: `BK-${Date.now().toString().slice(-6)}`, coachId: coach.id, coachName: coach.name, price: coach.price, methodLabel: bookingMethod().label, status: 'مؤكد بانتظار الدفع', createdAt: new Date().toISOString() };
+  const item = { ...state.booking, id: `BK-${Date.now().toString().slice(-6)}`, coachId: coach.id, coachName: coach.name, price: coach.price, methodLabel: bookingMethod().label, status: BOOKING_OWNER_CONFIRM_STATUS, paymentStatus: 'pending', createdAt: new Date().toISOString() };
   saveStoredBookings([item, ...getStoredBookings()]);
+  addBookingNotification(item.id, 'owner', OWNER_WHATSAPP_NUMBER, `طلب حجز جديد ${item.id}: ${item.clientName} مع ${item.coachName} (${item.sessionType}) بتاريخ ${formatBookingDate(item.date)} الساعة ${item.time}. يرجى تأكيد الحجز أو اقتراح وقت بديل للعميل.`, 'owner-request');
+  addBookingNotification(item.id, 'client', item.phone, `مرحباً ${item.clientName}، استلمنا طلب حجزك رقم ${item.id} مع ${item.coachName}. سيقوم المالك بمراجعة الموعد وتأكيده أو اقتراح وقت بديل قريباً.`, 'client-received');
   state.bookingConfirmation = item;
   state.booking = { ...DEFAULT_BOOKING_DRAFT };
   state.bookingStep = 1;
-  showToast('تم تأكيد الموعد وإصدار رقم الحجز');
+  showToast('تم استلام طلب الحجز وإرسال رسائل واتساب');
   navigate('/booking/confirmation');
 }
 
@@ -700,6 +759,8 @@ function paymentError(booking) {
   const draft = state.payment;
   if (!booking) return 'تعذر العثور على الحجز المطلوب للدفع.';
   if (findPaymentByBookingId(booking.id)) return 'تم دفع هذا الحجز مسبقاً.';
+  if (booking.status !== BOOKING_READY_FOR_PAYMENT_STATUS) return 'ينتظر الحجز تأكيد المالك قبل الدفع.';
+  if (!isPaymentWindowOpen(booking)) return 'انتهت مهلة الدفع خلال ساعتين من تأكيد الحجز.';
   if (!draft.method) return 'اختر وسيلة الدفع الإلكتروني.';
   if (!draft.cardholder.trim()) return 'اكتب اسم حامل البطاقة.';
   const digits = draft.number.replace(/\D/g, '');
@@ -733,7 +794,7 @@ async function processBookingPayment(bookingId) {
     });
     const payment = { ...response.payment, bookingId: booking.id, methodLabel: paymentMethod().label, paidAt: response.payment?.paidAt || new Date().toISOString() };
     saveStoredPayments([payment, ...getStoredPayments().filter((item) => String(item.bookingId) !== String(booking.id))]);
-    const updated = updateStoredBookingStatus(booking.id, 'مدفوع ومؤكد نهائياً', payment) || { ...booking, status: 'مدفوع ومؤكد نهائياً', paymentStatus: 'paid', paymentId: payment.transactionId, paidAt: payment.paidAt };
+    const updated = updateStoredBookingStatus(booking.id, BOOKING_PAID_STATUS, payment) || { ...booking, status: BOOKING_PAID_STATUS, paymentStatus: 'paid', paymentId: payment.transactionId, paidAt: payment.paidAt };
     state.bookingConfirmation = updated;
     state.payment = { ...DEFAULT_PAYMENT_DRAFT };
     showToast('تم الدفع الإلكتروني وتثبيت الحجز نهائياً');
@@ -752,6 +813,8 @@ function bookingPaymentPage(bookingId) {
   const paidPayment = findPaymentByBookingId(booking.id);
   const totals = calculatePaymentTotals(booking.price);
   const methods = PAYMENT_METHODS.map((method) => `<button type="button" onclick="updatePaymentField('method','${method.id}')" class="rounded-2xl border p-4 text-right ${state.payment.method === method.id ? 'border-moss bg-mint' : 'border-moss/10 bg-white'}"><b class="text-moss">${method.icon} ${method.label}</b><p class="mt-1 text-sm text-ink/60">${method.note}</p></button>`).join('');
+  if (booking.status !== BOOKING_READY_FOR_PAYMENT_STATUS && !paidPayment) return shell('الدفع بانتظار تأكيد المالك', 'سيظهر رابط الدفع بعد تأكيد المالك للموعد أو بعد قبولك للوقت البديل المقترح.', `<div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-sand px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(booking.status)}</span><p class="mt-4 leading-8 text-ink/65">تم إرسال رسالة واتساب باستلام الطلب، وسيتم إشعارك برسالة ثانية عند التأكيد لإتمام الدفع خلال ساعتين.</p><button onclick="navigate('/booking/confirmation')" class="mt-5 rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">العودة للتأكيد</button></div>`, 'مسار عميق /booking/payment');
+  if (!isPaymentWindowOpen(booking) && !paidPayment) return shell('انتهت مهلة الدفع', 'انتهت نافذة السداد المحددة بساعتين من وقت تأكيد المالك للحجز. يرجى طلب موعد جديد أو التواصل مع الدعم.', `<button onclick="resetBooking()" class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">بدء حجز جديد</button>`, 'مهلة الدفع');
   if (paidPayment) {
     return shell('تم الدفع مسبقاً', 'هذا الحجز مثبت ومدفوع إلكترونياً ويمكنك الرجوع لتفاصيل التأكيد.', `<div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">مدفوع</span><h2 class="mt-4 font-display text-3xl font-extrabold text-moss">${escapeHTML(paidPayment.transactionId)}</h2><p class="mt-3 text-ink/65">تم السداد بمبلغ ${formatCurrency(paidPayment.amount)}.</p><button onclick="navigate('/booking/confirmation')" class="mt-5 rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">العودة للتأكيد</button></div>`, 'مسار عميق /booking/payment');
   }
@@ -764,9 +827,13 @@ function bookingConfirmationPage() {
   const payment = findPaymentByBookingId(item.id);
   const totals = calculatePaymentTotals(item.price);
   const isPaid = Boolean(payment) || item.paymentStatus === 'paid';
-  const nextSteps = [isPaid ? 'تم الدفع الإلكتروني وتثبيت الموعد نهائياً.' : 'استكمال الدفع الآمن لتثبيت الموعد نهائياً.', item.method === 'video' ? 'سيتم إرسال رابط الجلسة المرئية قبل الموعد.' : 'سيتم تثبيت رقم الاتصال الصوتي الخاص بالجلسة.', 'يمكن تعديل الموعد قبل 12 ساعة من بدايته.', 'سيصل تذكير حسب القناة المختارة.'];
-  const paymentPanel = isPaid ? `<div class="mt-5 rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">حالة الدفع</span><p class="mt-1 font-bold text-moss">مدفوع إلكترونياً · ${escapeHTML(payment?.transactionId || item.paymentId || 'تم السداد')}</p></div>` : `<div class="mt-5 rounded-2xl border border-clay/20 bg-sand/70 p-4"><span class="text-xs font-extrabold text-ink/50">مطلوب للدفع</span><p class="mt-1 font-display text-2xl font-extrabold text-moss">${formatCurrency(totals.total)}</p><p class="mt-1 text-sm text-ink/60">تشمل ضريبة القيمة المضافة 15%</p><button onclick="navigate('/booking/payment/${escapeHTML(item.id)}')" class="mt-4 w-full rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">الدفع الإلكتروني الآن</button></div>`;
-  return shell('تم تأكيد الموعد', 'تم إصدار رقم حجز واضح مع تفاصيل الموعد ونوع الجلسة وخطوات ما بعد الحجز، ويمكنك إتمام الدفع الإلكتروني مباشرة من هذه الصفحة.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(isPaid ? 'مدفوع ومؤكد نهائياً' : item.status)}</span><h2 class="mt-4 font-display text-4xl font-extrabold text-moss">${escapeHTML(item.id)}</h2><div class="mt-6 grid gap-4 md:grid-cols-2">${[['المستفيد', item.clientName], ['المختص', item.coachName], ['نوع الاستشارة', item.sessionType], ['نوع الحجز', item.methodLabel], ['التاريخ', formatBookingDate(item.date)], ['الوقت', item.time], ['التكلفة', `${item.price} ر.س`], ['التذكير', item.reminder]].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div>${paymentPanel}</div><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">الخطوات التالية</h3><div class="mt-5 grid gap-3">${nextSteps.map((next, index) => `<div class="rounded-2xl bg-white/10 p-4"><b>${index + 1}.</b> ${next}</div>`).join('')}</div><button onclick="resetBooking()" class="mt-5 w-full rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حجز موعد آخر</button></aside></div>`, 'مسار عميق /booking/confirmation');
+  const deadlineText = item.paymentDeadline ? new Date(item.paymentDeadline).toLocaleString('ar-SA') : '';
+  const clientMessages = bookingNotifications(item.id, 'client');
+  const nextSteps = [isPaid ? 'تم الدفع الإلكتروني وتثبيت الموعد نهائياً.' : item.status === BOOKING_OWNER_CONFIRM_STATUS ? 'تم إرسال طلبك للمالك لتأكيد الموعد أو اقتراح وقت بديل.' : item.status === BOOKING_ALTERNATIVE_STATUS ? 'يمكنك قبول الوقت البديل المقترح ثم الدفع خلال ساعتين.' : `استكمل الدفع قبل انتهاء المهلة: ${deadlineText}.`, item.method === 'video' ? 'سيتم إرسال رابط الجلسة المرئية قبل الموعد.' : 'سيتم تثبيت رقم الاتصال الصوتي الخاص بالجلسة.', 'يمكن تعديل الموعد قبل 12 ساعة من بدايته.', 'سيصل تذكير حسب القناة المختارة.'];
+  const alternativePanel = item.status === BOOKING_ALTERNATIVE_STATUS ? `<div class="mt-5 rounded-2xl border border-clay/20 bg-sand/70 p-4"><span class="text-xs font-extrabold text-ink/50">وقت بديل مقترح</span><p class="mt-1 font-bold text-moss">${formatBookingDate(item.alternativeDate)} · ${escapeHTML(item.alternativeTime)}</p><p class="mt-1 text-sm text-ink/60">${escapeHTML(item.alternativeNote || 'قبول المقترح يفتح نافذة دفع مدتها ساعتان.')}</p><button onclick="acceptSuggestedBooking('${escapeHTML(item.id)}')" class="mt-4 w-full rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">قبول الوقت البديل</button></div>` : '';
+  const paymentPanel = isPaid ? `<div class="mt-5 rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">حالة الدفع</span><p class="mt-1 font-bold text-moss">مدفوع إلكترونياً · ${escapeHTML(payment?.transactionId || item.paymentId || 'تم السداد')}</p></div>` : item.status === BOOKING_READY_FOR_PAYMENT_STATUS && isPaymentWindowOpen(item) ? `<div class="mt-5 rounded-2xl border border-clay/20 bg-sand/70 p-4"><span class="text-xs font-extrabold text-ink/50">مطلوب للدفع خلال ساعتين من التأكيد</span><p class="mt-1 font-display text-2xl font-extrabold text-moss">${formatCurrency(totals.total)}</p><p class="mt-1 text-sm text-ink/60">المهلة تنتهي: ${deadlineText} · تشمل ضريبة القيمة المضافة 15%</p><button onclick="navigate('/booking/payment/${escapeHTML(item.id)}')" class="mt-4 w-full rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">الدفع الإلكتروني الآن</button></div>` : `<div class="mt-5 rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">حالة الدفع</span><p class="mt-1 font-bold text-moss">${item.status === BOOKING_OWNER_CONFIRM_STATUS ? 'ينتظر تأكيد المالك قبل الدفع' : item.status === BOOKING_ALTERNATIVE_STATUS ? 'ينتظر قبول الوقت البديل' : 'مهلة الدفع غير متاحة حالياً'}</p></div>`;
+  const messagesPanel = `<div class="mt-5 rounded-2xl bg-white/70 p-4"><h3 class="font-display text-xl font-extrabold text-moss">رسائل واتساب للعميل</h3><div class="mt-3 grid gap-2">${clientMessages.length ? clientMessages.map((msg) => `<div class="rounded-2xl bg-mint/55 p-3 text-sm leading-7"><b>${escapeHTML(msg.channel)} · ${escapeHTML(msg.status)}</b><p>${escapeHTML(msg.message)}</p></div>`).join('') : '<p class="text-sm text-ink/60">لا توجد رسائل بعد.</p>'}</div></div>`;
+  return shell(item.status === BOOKING_OWNER_CONFIRM_STATUS ? 'تم استلام طلب الحجز' : 'تفاصيل الحجز', 'تتم مراجعة الموعد من المالك أولاً، ثم تصلك رسالة واتساب عند استلام الطلب ورسالة أخرى عند التأكيد لإتمام الدفع خلال ساعتين.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(isPaid ? BOOKING_PAID_STATUS : item.status)}</span><h2 class="mt-4 font-display text-4xl font-extrabold text-moss">${escapeHTML(item.id)}</h2><div class="mt-6 grid gap-4 md:grid-cols-2">${[['المستفيد', item.clientName], ['المختص', item.coachName], ['نوع الاستشارة', item.sessionType], ['نوع الحجز', item.methodLabel], ['التاريخ', formatBookingDate(item.date)], ['الوقت', item.time], ['التكلفة', `${item.price} ر.س`], ['التذكير', item.reminder]].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div>${alternativePanel}${paymentPanel}${messagesPanel}</div><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">الخطوات التالية</h3><div class="mt-5 grid gap-3">${nextSteps.map((next, index) => `<div class="rounded-2xl bg-white/10 p-4"><b>${index + 1}.</b> ${next}</div>`).join('')}</div><button onclick="resetBooking()" class="mt-5 w-full rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حجز موعد آخر</button></aside></div>`, 'مسار عميق /booking/confirmation');
 }
 
 function loginPage() {
@@ -862,6 +929,21 @@ window.resetBooking = resetBooking;
 window.updatePaymentField = updatePaymentField;
 window.processBookingPayment = processBookingPayment;
 window.maskCardNumber = maskCardNumber;
+window.getStoredBookings = getStoredBookings;
+window.saveStoredBookings = saveStoredBookings;
+window.getStoredBookingNotifications = getStoredBookingNotifications;
+window.bookingNotifications = bookingNotifications;
+window.ownerConfirmBooking = ownerConfirmBooking;
+window.ownerSuggestBookingAlternative = ownerSuggestBookingAlternative;
+window.acceptSuggestedBooking = acceptSuggestedBooking;
+window.deleteStoredBooking = deleteStoredBooking;
+window.viewStoredBooking = viewStoredBooking;
+window.formatBookingDate = formatBookingDate;
+window.formatCurrency = formatCurrency;
+window.BOOKING_OWNER_CONFIRM_STATUS = BOOKING_OWNER_CONFIRM_STATUS;
+window.BOOKING_READY_FOR_PAYMENT_STATUS = BOOKING_READY_FOR_PAYMENT_STATUS;
+window.BOOKING_ALTERNATIVE_STATUS = BOOKING_ALTERNATIVE_STATUS;
+window.BOOKING_PAID_STATUS = BOOKING_PAID_STATUS;
 window.adminCollections = adminCollections;
 window.ADMIN_STATUS_OPTIONS = ADMIN_STATUS_OPTIONS;
 window.OWNER_AUTH_KEY = OWNER_AUTH_KEY;
