@@ -1,4 +1,4 @@
-console.log('Akwadra Super Builder Initialized - Wazen Platform');
+console.log('Akwadra Super Builder Initialized - Adrek Platform');
 
 const coaches = [
   { id: 1, name: 'د. ريم العبدالله', specialty: 'إرشاد نفسي', city: 'عن بعد', rating: 4.9, price: 220, next: 'اليوم 7:30م', badge: 'جلسات قلق وتوازن', image: 'ر', experience: 11 },
@@ -60,7 +60,7 @@ function showToast(message) {
   }, 2400);
 }
 
-function shell(title, subtitle, body, eyebrow = 'وازن') {
+function shell(title, subtitle, body, eyebrow = 'Adrek') {
   return `
     <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div class="reveal mb-8 rounded-[2rem] border border-white/70 bg-white/55 p-6 shadow-calm backdrop-blur-xl md:p-8">
@@ -79,7 +79,7 @@ function homePage() {
       <div class="reveal">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-moss/10 bg-white/70 px-4 py-2 text-sm font-extrabold text-moss shadow-sm"><span class="h-2 w-2 rounded-full bg-sage"></span> منصة واحدة للمستفيد ومزود الخدمة</span>
         <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">احجز استشارة نفسية أو أسرية أو جلسة كوتشينق في مساحة آمنة وهادئة.</h1>
-        <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">وازن تجمع المختصين، المنتجات التدريبية الرقمية، برامج المقاييس الشخصية والنفسية، وإصدار تقارير احترافية تساعدك على فهم ذاتك وخطوتك التالية.</p>
+        <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">Adrek تجمع المختصين، المنتجات التدريبية الرقمية، برامج المقاييس الشخصية والنفسية، وإصدار تقارير احترافية تساعدك على فهم ذاتك وخطوتك التالية.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
           <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
@@ -177,10 +177,10 @@ function assessmentsPage() {
 }
 
 function reportsPage() {
-  return shell('إصدار التقارير الاحترافية', 'نموذج بصري لتقارير وازن: ملخص تنفيذي، درجات المقاييس، توصيات الجلسة، وخطة متابعة قابلة للطباعة.', `
+  return shell('إصدار التقارير الاحترافية', 'نموذج بصري لتقارير Adrek: ملخص تنفيذي، درجات المقاييس، توصيات الجلسة، وخطة متابعة قابلة للطباعة.', `
     <div class="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
       <div class="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm"><h3 class="font-display text-2xl font-extrabold text-moss">مكونات التقرير</h3><div class="mt-5 space-y-3">${['ملخص تنفيذي بلغة واضحة','رسم تقدم ودرجات معيارية','توصيات عملية لمدة 14 يوم','ملاحظات المختص وسجل الجلسات','رابط مشاركة آمن وصلاحيات'].map((x,i)=>`<div class="flex items-center gap-3 rounded-2xl bg-mint/55 p-4"><span class="flex h-8 w-8 items-center justify-center rounded-full bg-moss text-sm font-bold text-white">${i+1}</span><b>${x}</b></div>`).join('')}</div></div>
-      <div class="rounded-[2.2rem] bg-moss p-3 shadow-calm"><div class="rounded-[1.8rem] bg-[#fbf7ed] p-6"><div class="flex justify-between"><div><p class="text-sm font-bold text-ink/55">تقرير وازن المهني</p><h3 class="font-display text-3xl font-extrabold text-moss">ملف الاتزان النفسي</h3></div><span class="rounded-2xl bg-mint px-4 py-2 text-sm font-extrabold text-moss">PDF</span></div><div class="mt-6 grid gap-3 sm:grid-cols-3">${stat('82%','مرونة نفسية')}${stat('68%','إدارة ضغط')}${stat('91%','وعي ذاتي')}</div><div class="mt-6 rounded-3xl bg-white p-5"><h4 class="font-display font-extrabold text-moss">توصية مختصرة</h4><p class="mt-2 leading-8 text-ink/65">جلسة متابعة أسبوعية مع برنامج صوتي لإدارة الضغط وتمرين تدوين يومي.</p></div></div></div>
+      <div class="rounded-[2.2rem] bg-moss p-3 shadow-calm"><div class="rounded-[1.8rem] bg-[#fbf7ed] p-6"><div class="flex justify-between"><div><p class="text-sm font-bold text-ink/55">تقرير Adrek المهني</p><h3 class="font-display text-3xl font-extrabold text-moss">ملف الاتزان النفسي</h3></div><span class="rounded-2xl bg-mint px-4 py-2 text-sm font-extrabold text-moss">PDF</span></div><div class="mt-6 grid gap-3 sm:grid-cols-3">${stat('82%','مرونة نفسية')}${stat('68%','إدارة ضغط')}${stat('91%','وعي ذاتي')}</div><div class="mt-6 rounded-3xl bg-white p-5"><h4 class="font-display font-extrabold text-moss">توصية مختصرة</h4><p class="mt-2 leading-8 text-ink/65">جلسة متابعة أسبوعية مع برنامج صوتي لإدارة الضغط وتمرين تدوين يومي.</p></div></div></div>
     </div>
   `, 'تقارير قابلة للإصدار');
 }
