@@ -31,6 +31,7 @@ const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/script.js', { file: 'script.js', type: 'application/javascript; charset=utf-8' }],
+  ['/discover.js', { file: 'discover.js', type: 'application/javascript; charset=utf-8' }],
   ['/admin.js', { file: 'admin.js', type: 'application/javascript; charset=utf-8' }],
   ['/settings.js', { file: 'settings.js', type: 'application/javascript; charset=utf-8' }],
   ['/style.css', { file: 'style.css', type: 'text/css; charset=utf-8' }],
