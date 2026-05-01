@@ -50,7 +50,7 @@ function adminTabButton(tab, label) {
 }
 
 function adminShell(body) {
-  const tabs = [['overview', 'نظرة عامة'], ['programs', 'البرامج والمنتجات'], ['subscriptions', 'الاشتراكات'], ['phrases', 'العبارات'], ['support', 'الدعم'], ['security', 'الأمان']];
+  const tabs = [['overview', 'نظرة عامة'], ['programs', 'البرامج والمنتجات'], ['subscriptions', 'الاشتراكات'], ['settings', 'الإعدادات العامة'], ['phrases', 'العبارات'], ['support', 'الدعم'], ['security', 'الأمان']];
   return shell('لوحة تحكم المالك', 'إدارة مركزية لكل المحتوى مع إضافة وتعديل وحذف وإعادة ترتيب وتحديد ما تم تفعيله وما هو قريبا، مع صفحة عميقة لكل تبويب.', `
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm">
       <div class="flex flex-wrap gap-2">${tabs.map(([tab, label]) => adminTabButton(tab, label)).join('')}</div>
@@ -64,11 +64,12 @@ function adminOverview() {
   const activeCount = managedItems.filter(item => (item.status || 'تم التفعيل') === 'تم التفعيل').length;
   const soonCount = managedItems.filter(item => item.status === 'قريبا').length;
   const openSupport = supportTickets.filter(ticket => ticket.status !== 'مغلق').length;
+  const activeSettings = platformSettings.filter(setting => setting.status === 'تم التفعيل').length;
   return `<div class="grid gap-5 md:grid-cols-4">
-    ${stat(managedItems.length, 'عنصر قابل للإدارة')}${stat(activeCount, 'تم التفعيل')}${stat(soonCount, 'قريبا')}${stat(openSupport, 'طلبات دعم مفتوحة')}
+    ${stat(managedItems.length, 'عنصر قابل للإدارة')}${stat(activeCount, 'تم التفعيل')}${stat(activeSettings, 'إعداد عام نشط')}${stat(openSupport, 'طلبات دعم مفتوحة')}
   </div>
   <div class="mt-6 grid gap-5 lg:grid-cols-2">
-    <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">إجراءات سريعة</h3><div class="mt-5 grid gap-3 sm:grid-cols-2"><button onclick="navigate('/admin/programs')" class="rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">إدارة البرامج</button><button onclick="navigate('/admin/subscriptions')" class="rounded-2xl bg-mint px-5 py-3 font-extrabold text-moss">إدارة الاشتراكات</button><button onclick="navigate('/admin/phrases')" class="rounded-2xl bg-sand px-5 py-3 font-extrabold text-moss">تغيير العبارات</button><button onclick="navigate('/admin/support')" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حل مشاكل الدعم</button></div></div>
+    <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">إجراءات سريعة</h3><div class="mt-5 grid gap-3 sm:grid-cols-2"><button onclick="navigate('/admin/programs')" class="rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">إدارة البرامج</button><button onclick="navigate('/admin/subscriptions')" class="rounded-2xl bg-mint px-5 py-3 font-extrabold text-moss">إدارة الاشتراكات</button><button onclick="navigate('/admin/settings')" class="rounded-2xl bg-sand px-5 py-3 font-extrabold text-moss">الإعدادات العامة</button><button onclick="navigate('/admin/support')" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حل مشاكل الدعم</button></div></div>
     <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">آخر مشاكل الدعم</h3><div class="mt-4 grid gap-3">${supportTickets.slice(0, 3).map(ticket => `<div class="rounded-2xl bg-mint/55 p-4"><b class="text-moss">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.client)}</b><p class="mt-1 text-sm text-ink/65">${escapeHTML(ticket.issue)}</p></div>`).join('')}</div></div>
   </div>`;
 }
@@ -171,7 +172,7 @@ function adminPage() {
   state.adminTab = state.route.split('/')[2] || 'overview';
   if (state.adminTab === 'subscriptions') state.adminCollection = 'subscriptions';
   if (state.adminTab === 'programs' && state.adminCollection === 'subscriptions') state.adminCollection = 'programs';
-  const body = state.adminTab === 'overview' ? adminOverview() : state.adminTab === 'phrases' ? adminPhrasesPage() : state.adminTab === 'support' ? adminSupportPage() : state.adminTab === 'security' ? adminSecurityPage() : adminCatalogsPage();
+  const body = state.adminTab === 'overview' ? adminOverview() : state.adminTab === 'settings' ? adminSettingsPage() : state.adminTab === 'phrases' ? adminPhrasesPage() : state.adminTab === 'support' ? adminSupportPage() : state.adminTab === 'security' ? adminSecurityPage() : adminCatalogsPage();
   return adminShell(body);
 }
 
