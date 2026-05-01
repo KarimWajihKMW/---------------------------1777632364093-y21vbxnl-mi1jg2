@@ -70,6 +70,7 @@ const seedCollections = {
   platformSettings: [
     { id: 'brand-name', title: 'اسم المنصة', group: 'الهوية', value: 'Adrek', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-15', description: 'الاسم المعروض في رأس الموقع والتقارير والرسائل النظامية.' },
     { id: 'support-email', title: 'بريد الدعم الرئيسي', group: 'التواصل', value: 'care@adrek.example', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-14', description: 'البريد الذي يستقبل طلبات العملاء ومشاكل الدعم.' },
+    { id: 'support-whatsapp', title: 'رقم واتساب الدعم', group: 'التواصل', value: '966562777284', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-15', description: 'رقم واتساب الظاهر للزوار والمستخدم في رسائل تنبيه الحجوزات للمالك.' },
     { id: 'default-session-duration', title: 'مدة الجلسة الافتراضية', group: 'الحجوزات', value: '50 دقيقة', visibility: 'داخلي', status: 'تم التفعيل', updated: '2026-02-12', description: 'المدة المقترحة عند إنشاء مواعيد جديدة للمستشارين والكوتشز.' },
     { id: 'booking-window', title: 'نافذة الحجز المسبق', group: 'الحجوزات', value: '14 يوم', visibility: 'داخلي', status: 'تم التفعيل', updated: '2026-02-10', description: 'أقصى فترة متاحة أمام المستفيد لاختيار موعد جلسة قادمة.' },
     { id: 'currency', title: 'عملة التسعير', group: 'المدفوعات', value: 'ريال سعودي', visibility: 'عام', status: 'تم التفعيل', updated: '2026-02-09', description: 'العملة المستخدمة في بطاقات البرامج والاشتراكات والفواتير.' },
