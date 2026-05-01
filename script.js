@@ -15,6 +15,9 @@ const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
 const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
+const CHIP_ANIMATION_DELAY_STEP = 0.12;
+const HERO_CHIP_LABELS = ['ألوان هادئة مريحة', 'تجربة متوافقة مع الجوال', 'حجز وتقارير وحركة حية', 'رحلات علاجية وتطويرية مترابطة'];
+const HOME_MOTION_LABELS = ['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة'];
 
 const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const includesTerm = (value = '', term = '') => String(value).toLocaleLowerCase('ar').includes(String(term).toLocaleLowerCase('ar'));
@@ -348,37 +351,70 @@ function homePage() {
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
           <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
         </div>
-        <div class="mt-10 grid grid-cols-3 gap-3 text-center sm:max-w-xl">
+        <div class="mt-6 flex flex-wrap gap-3">
+          ${HERO_CHIP_LABELS.map((label, index) => heroChip(label, index)).join('')}
+        </div>
+        <div class="mt-10 grid gap-3 text-center sm:max-w-2xl sm:grid-cols-3">
           ${stat('16K+', 'مستفيد')}${stat('320+', 'مختص معتمد')}${stat('42K+', 'تقرير صادر')}
         </div>
       </div>
-      <div class="hero-card reveal reveal-delay-2 rounded-[2.5rem] p-5 md:p-7">
-        <div class="relative z-10 rounded-[2rem] bg-[#f9fbf4]/90 p-5">
-          <div class="mb-5 flex items-center justify-between">
-            <div><p class="text-sm font-bold text-ink/55">لوحة الاتزان اليوم</p><h2 class="font-display text-2xl font-extrabold text-moss">خريطة الرحلة العلاجية</h2></div>
-            <span class="rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">خصوصي</span>
-          </div>
-          <div class="grid gap-4 md:grid-cols-[.8fr_1fr]">
-            <div class="relative flex min-h-64 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-mint to-sand/80 p-6">
-              <div class="breath-ring absolute h-40 w-40 rounded-full border border-moss/20"></div>
-              <div class="breath-ring absolute h-28 w-28 rounded-full border border-moss/30" style="animation-delay:.5s"></div>
-              <div class="z-10 text-center"><div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white text-3xl shadow-calm">🌱</div><p class="font-display text-3xl font-extrabold text-moss">82%</p><p class="text-sm font-bold text-ink/60">مؤشر التحسن</p></div>
+      <div class="grid gap-4 reveal reveal-delay-2">
+        <div class="hero-card rounded-[2.5rem] p-5 md:p-7">
+          <div class="relative z-10 rounded-[2rem] bg-[#f9fbf4]/90 p-5">
+            <div class="mb-5 flex items-center justify-between">
+              <div><p class="text-sm font-bold text-ink/55">لوحة الاتزان اليوم</p><h2 class="font-display text-2xl font-extrabold text-moss">خريطة الرحلة العلاجية</h2></div>
+              <span class="rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">خصوصي</span>
             </div>
-            <div class="space-y-3">
-              ${journey('مقياس أولي', 'اكتمل', 100)}${journey('جلسة كوتشينج', 'اليوم 7:30م', 64)}${journey('تقرير مهني', 'قيد المراجعة', 48)}
-              <div class="rounded-3xl bg-white p-4 shadow-sm"><p class="mb-2 text-sm font-extrabold text-moss">توصية ذكية</p><p class="text-sm leading-7 text-ink/65">ابدأ ببرنامج وضوح المسار مع جلسة متابعة بعد 7 أيام.</p></div>
+            <div class="grid gap-4 md:grid-cols-[.8fr_1fr]">
+              <div class="relative flex min-h-64 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-mint to-sand/80 p-6">
+                <div class="breath-ring absolute h-40 w-40 rounded-full border border-moss/20"></div>
+                <div class="breath-ring absolute h-28 w-28 rounded-full border border-moss/30" style="animation-delay:.5s"></div>
+                <div class="z-10 text-center"><div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white text-3xl shadow-calm">🌱</div><p class="font-display text-3xl font-extrabold text-moss">82%</p><p class="text-sm font-bold text-ink/60">مؤشر التحسن</p></div>
+              </div>
+              <div class="space-y-3">
+                ${journey('مقياس أولي', 'اكتمل', 100)}${journey('جلسة كوتشينج', 'اليوم 7:30م', 64)}${journey('تقرير مهني', 'قيد المراجعة', 48)}
+                <div class="rounded-3xl bg-white p-4 shadow-sm"><p class="mb-2 text-sm font-extrabold text-moss">توصية ذكية</p><p class="text-sm leading-7 text-ink/65">ابدأ ببرنامج وضوح المسار مع جلسة متابعة بعد 7 أيام.</p></div>
+              </div>
             </div>
           </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          ${pulseCard('جلسات مباشرة', 'مواعيد مرنة وحجز سريع مع مختصين معتمدين.', 0)}${pulseCard('تقارير فورية', 'مؤشرات تقدم مرئية تتحرك مع كل مرحلة من الرحلة.', 1)}${pulseCard('متابعة أسرية', 'تنبيهات ولغة بصرية مريحة على جميع الشاشات.', 2)}
         </div>
       </div>
     </div>
   </section>
+  <section class="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
+    <div class="marquee-shell rounded-[2rem] border border-white/70 bg-white/65 px-3 py-4 shadow-sm backdrop-blur-xl">
+      <div class="marquee-track">
+        ${HOME_MOTION_LABELS.concat(HOME_MOTION_LABELS).map((label) => motionPill(label)).join('')}
+      </div>
+    </div>
+  </section>
   <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-    <div class="grid gap-4 md:grid-cols-4">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       ${feature('🧑‍⚕️', 'حجز مختصين', 'بحث وفرز حسب التخصص والسعر والتقييم مع مواعيد مباشرة.', '/coaches')}
       ${feature('🧩', 'برامج الأطفال', 'برامج نمائية وسلوكية للأطفال والمراهقين بخطط للأسرة والمدرسة.', '/children-programs')}
       ${feature('🎓', 'برامج ودورات', 'دورات تدريبية مباشرة ومسجلة للأفراد والممارسين.', '/courses')}
       ${feature('🏛️', 'برامج قيادية', 'مسارات تطوير قيادي للجهات والمنظمات وفرق العمل.', '/leadership-programs')}
+    </div>
+  </section>
+  <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+    <div class="grid gap-5 lg:grid-cols-[1fr_.95fr]">
+      <div class="rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-calm">
+        <span class="inline-flex rounded-full bg-mint px-4 py-2 text-xs font-extrabold text-moss">تجربة متحركة</span>
+        <h2 class="mt-4 font-display text-3xl font-extrabold text-moss">الصفحة الرئيسية أصبحت أكثر حياة ووضوحاً</h2>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+          ${experiencePoint('بطاقات نابضة', 'حركة خفيفة ومتواصلة تجعل الواجهة نشطة بدون إزعاج.')}
+          ${experiencePoint('تجاوب كامل', 'العناصر تتكدس بسلاسة على الشاشات الصغيرة مع مساحات مريحة للمس.')}
+          ${experiencePoint('ألوان مترابطة', 'تدرجات أخضر وبيج موحدة في الأزرار والعناوين والشرائط.')}
+          ${experiencePoint('دعوات واضحة', 'النصوص داخل الأزرار والتبويبات أصبحت أوضح وأعلى تبايناً.')}
+        </div>
+      </div>
+      <div class="grid gap-4">
+        ${floatingInsight('جاهزية الجوال', 'تخطيط مرن وأزرار واضحة ومقروءة في الهواتف.')}
+        ${floatingInsight('رحلة مترابطة', 'من الحجز إلى التقرير كل العناصر تحمل نفس الهوية الهادئة.')}
+      </div>
     </div>
   </section>
   <section class="bg-moss py-16 text-white">
@@ -390,7 +426,12 @@ function homePage() {
 }
 
 function stat(number, label) { return `<div class="rounded-3xl border border-white/70 bg-white/60 p-4 shadow-sm"><p class="font-display text-2xl font-extrabold text-moss">${number}</p><p class="text-xs font-bold text-ink/55">${label}</p></div>`; }
+function heroChip(label, index) { return `<span class="hero-chip rounded-full border border-moss/10 bg-white/80 px-4 py-3 text-sm font-extrabold text-moss shadow-sm" style="animation-delay:${index * CHIP_ANIMATION_DELAY_STEP}s">${label}</span>`; }
 function journey(title, meta, value) { return `<div class="rounded-3xl bg-white p-4 shadow-sm"><div class="mb-2 flex justify-between text-sm"><b class="text-moss">${title}</b><span class="text-ink/55">${meta}</span></div><div class="h-2 rounded-full bg-mint"><div class="progress-wave h-2 rounded-full" style="width:${value}%"></div></div></div>`; }
+function pulseCard(title, text, index) { return `<div class="pulse-card rounded-[1.8rem] border border-white/70 bg-white/70 p-5 shadow-sm" style="animation-delay:${index * 0.4}s"><p class="text-sm font-extrabold text-clay">${title}</p><p class="mt-2 leading-7 text-ink/65">${text}</p></div>`; }
+function motionPill(label) { return `<span class="motion-pill rounded-full border border-moss/10 bg-[#f4efe2] px-4 py-2 text-sm font-extrabold text-moss">${label}</span>`; }
+function experiencePoint(title, text) { return `<div class="rounded-[1.6rem] bg-[#f7f1e4] p-4"><h3 class="font-display text-lg font-extrabold text-moss">${title}</h3><p class="mt-2 text-sm leading-7 text-ink/65">${text}</p></div>`; }
+function floatingInsight(title, text) { return `<div class="floating-insight rounded-[1.9rem] border border-white/70 bg-white/75 p-5 shadow-calm"><span class="inline-flex rounded-full bg-mint px-3 py-1 text-xs font-extrabold text-moss">إضاءة</span><h3 class="mt-4 font-display text-2xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-8 text-ink/65">${text}</p></div>`; }
 function feature(icon, title, text, route) { return `<a href="${route}" data-route="${route}" class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/65 p-6 shadow-sm backdrop-blur-xl"><span class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-mint text-2xl">${icon}</span><h3 class="font-display text-xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-7 text-ink/62">${text}</p></a>`; }
 function step(num, title, text) { return `<div class="rounded-[2rem] border border-white/15 bg-white/10 p-6"><span class="text-sm font-extrabold text-sand">${num}</span><h3 class="mt-3 font-display text-xl font-extrabold">${title}</h3><p class="mt-3 leading-7 text-white/70">${text}</p></div>`; }
 

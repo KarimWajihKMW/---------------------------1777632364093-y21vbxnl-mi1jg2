@@ -31,10 +31,22 @@ const STATIC_FILES = new Map([
 const scrypt = promisify(crypto.scrypt);
 const adminSessions = new Map();
 
+function isLocalDatabaseHost(hostname = '') {
+  return ['localhost', '127.0.0.1', '::1'].includes(hostname);
+}
+
+function resolveConnectionString() {
+  return ['DATABASE_URL', 'DATABASE_PRIVATE_URL', 'DATABASE_PUBLIC_URL', 'POSTGRES_URL', 'POSTGRESQL_URL']
+    .map((key) => process.env[key])
+    .find(Boolean) || '';
+}
+
 function createPoolConfig() {
-  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRESQL_URL;
+  const connectionString = resolveConnectionString();
   const sslMode = connectionString ? new URL(connectionString).searchParams.get('sslmode') : '';
-  const sslEnabled = process.env.PGSSL === 'true' || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase());
+  const sslEnabled = process.env.PGSSL === 'true'
+    || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase())
+    || (connectionString && !isLocalDatabaseHost(new URL(connectionString).hostname));
   const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED !== 'false';
   if (connectionString) {
     return sslEnabled ? { connectionString, ssl: { rejectUnauthorized } } : { connectionString };

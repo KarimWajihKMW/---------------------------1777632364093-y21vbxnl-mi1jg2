@@ -14,7 +14,7 @@ function isOwnerLoggedIn() {
 }
 
 function ownerLoginPage() {
-  return shell('دخول لوحة المالك', 'صفحة خاصة لإدارة البرامج والاشتراكات والمنتجات والعبارات والدعم. اسم المستخدم الافتراضي هو admin ويجب ضبط OWNER_INITIAL_PASSWORD بقيمة غير فارغة قبل أول تشغيل للخادم، ثم يمكن تغييرها من تبويب الأمان.', `
+  return shell('دخول لوحة المالك', 'صفحة خاصة لإدارة البرامج والاشتراكات والمنتجات والعبارات والدعم. اسم المستخدم الافتراضي هو admin وكلمة المرور الافتراضية هي 12345678 عند أول تشغيل، ثم يمكن تغييرها من تبويب الأمان.', `
     <form class="mx-auto max-w-md rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); ownerLogin()">
       <div class="grid gap-4">
         <input id="ownerUser" autocomplete="username" required placeholder="اسم المستخدم" class="rounded-2xl border border-moss/10 px-4 py-3">
@@ -48,7 +48,7 @@ function ownerLogout() {
 }
 
 function adminTabButton(tab, label) {
-  return `<a href="/admin/${tab}" data-route="/admin/${tab}" class="rounded-2xl px-4 py-3 text-sm font-extrabold transition ${state.adminTab === tab ? 'bg-moss text-white shadow-leaf' : 'bg-white/70 text-moss hover:-translate-y-1'}">${label}</a>`;
+  return `<a href="/admin/${tab}" data-route="/admin/${tab}" class="tone-tab ${state.adminTab === tab ? 'tone-tab-active' : ''}">${label}</a>`;
 }
 
 function adminShell(body) {
@@ -86,7 +86,7 @@ function adminCatalogsPage() {
     .filter(({ item }) => config.fields.some((field) => includesTerm(item[field], state.search)));
   list.sort((a, b) => (activeSort === 'price' ? Number(a.item.price || 0) - Number(b.item.price || 0) : activeSort === 'status' ? String(a.item.status || '').localeCompare(String(b.item.status || ''), 'ar') : activeSort === 'title' ? String(a.item.title || a.item.name).localeCompare(String(b.item.title || b.item.name), 'ar') : a.index - b.index));
   const { pages, visible } = getPagedItems(list);
-  const collectionButtons = Object.entries(adminCollections).map(([key, itemConfig]) => `<button onclick="setAdminCollection('${key}')" class="rounded-2xl px-4 py-3 text-sm font-extrabold transition ${key === activeKey ? 'bg-moss text-white' : 'bg-white/70 text-moss hover:-translate-y-1'}">${itemConfig.label}</button>`).join('');
+  const collectionButtons = Object.entries(adminCollections).map(([key, itemConfig]) => `<button onclick="setAdminCollection('${key}')" class="tone-tab ${key === activeKey ? 'tone-tab-active' : ''}">${itemConfig.label}</button>`).join('');
   return `<div class="rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm"><div class="mb-4 flex flex-wrap gap-2">${collectionButtons}</div>${listToolbar({ placeholder: 'ابحث في الاسم أو الفئة أو الوصف', filters: statuses, activeFilter, activeSort, sorts: [{ value: 'order', label: 'الترتيب اليدوي' }, { value: 'title', label: 'الاسم' }, { value: 'price', label: 'السعر' }, { value: 'status', label: 'الحالة' }] })}<button onclick="createAdminItem('${activeKey}')" class="mt-4 rounded-2xl bg-moss px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">إضافة عنصر جديد</button></div>
   <div class="mt-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm"><div class="overflow-x-auto"><table class="w-full min-w-[900px] text-right"><thead class="bg-moss text-sm text-white"><tr><th class="p-4">#</th><th class="p-4">العنصر</th><th class="p-4">الفئة</th><th class="p-4">السعر</th><th class="p-4">الحالة</th><th class="p-4">إعادة الترتيب</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${visible.map(({ item, index }) => adminCatalogRow(activeKey, item, index)).join('')}</tbody></table>${visible.length ? '' : emptyState()}</div></div>${pagination(pages)}`;
 }
