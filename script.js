@@ -12,6 +12,7 @@ const subscriptions = [];
 const PAGE_SIZE = 4;
 const DEBOUNCE_MS = 140;
 const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
+const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_PASSWORD_KEY = 'adrek-owner-password';
 const OWNER_DEFAULT_PASSWORD = '12345678';
 const OWNER_USERNAME = 'admin';
@@ -75,7 +76,9 @@ const state = {
   adminTab: 'programs',
   adminCollection: 'programs',
   loading: true,
-  loadError: ''
+  loadError: '',
+  adminDataLoaded: false,
+  adminLoading: false
 };
 
 const createSafeStorage = (storageName) => {
@@ -156,10 +159,22 @@ function updateCollectionReference(key, items) {
   if (key === 'supportTickets' && typeof supportTickets !== 'undefined') replaceCollectionContents(supportTickets, items);
 }
 
+function clearProtectedCollections() {
+  if (typeof platformSettings !== 'undefined') replaceCollectionContents(platformSettings, []);
+  if (typeof ownerPhrases !== 'undefined') replaceCollectionContents(ownerPhrases, []);
+  if (typeof supportTickets !== 'undefined') replaceCollectionContents(supportTickets, []);
+  state.adminDataLoaded = false;
+  state.adminLoading = false;
+}
+
+function getAdminToken() {
+  return adrekStorage.session.getItem(OWNER_TOKEN_KEY) || '';
+}
+
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers || {})
     },
     ...options
@@ -176,6 +191,7 @@ async function apiRequest(path, options = {}) {
 async function saveCollection(key, items) {
   const response = await apiRequest(`/api/collections/${encodeURIComponent(key)}`, {
     method: 'PUT',
+    headers: { 'x-owner-token': getAdminToken() },
     body: JSON.stringify({ items })
   });
   updateCollectionReference(key, response.items || items);
@@ -185,14 +201,15 @@ async function saveCollection(key, items) {
 function applyBootstrap(payload = {}) {
   const collections = payload.collections || {};
   Object.entries(bootstrapCollections).forEach(([key, list]) => replaceCollectionContents(list, collections[key]));
-  if (typeof platformSettings !== 'undefined') replaceCollectionContents(platformSettings, collections.platformSettings);
-  if (typeof ownerPhrases !== 'undefined') replaceCollectionContents(ownerPhrases, collections.phrases);
-  if (typeof supportTickets !== 'undefined') replaceCollectionContents(supportTickets, collections.supportTickets);
+  if (typeof platformSettings !== 'undefined' && collections.platformSettings) replaceCollectionContents(platformSettings, collections.platformSettings);
+  if (typeof ownerPhrases !== 'undefined' && collections.phrases) replaceCollectionContents(ownerPhrases, collections.phrases);
+  if (typeof supportTickets !== 'undefined' && collections.supportTickets) replaceCollectionContents(supportTickets, collections.supportTickets);
 }
 
 async function initializeApp() {
   state.loading = true;
   state.loadError = '';
+  clearProtectedCollections();
   render();
 
   try {
@@ -209,7 +226,19 @@ async function initializeApp() {
 
 window.retryBootstrap = initializeApp;
 window.adrekApi = {
-  saveCollection,
+  async saveCollection(key, items) {
+    return saveCollection(key, items);
+  },
+  setAdminToken(token) {
+    adrekStorage.session.setItem(OWNER_TOKEN_KEY, token);
+  },
+  clearAdminToken() {
+    adrekStorage.session.removeItem(OWNER_TOKEN_KEY);
+    clearProtectedCollections();
+  },
+  hasAdminToken() {
+    return Boolean(getAdminToken());
+  },
   loginOwner(username, password) {
     return apiRequest('/api/auth/login', {
       method: 'POST',
@@ -219,8 +248,17 @@ window.adrekApi = {
   changeOwnerPassword(oldPassword, newPassword) {
     return apiRequest('/api/auth/password', {
       method: 'POST',
+      headers: { 'x-owner-token': getAdminToken() },
       body: JSON.stringify({ oldPassword, newPassword })
     });
+  },
+  async loadAdminData() {
+    const payload = await apiRequest('/api/admin/bootstrap', {
+      headers: { 'x-owner-token': getAdminToken() }
+    });
+    applyBootstrap(payload);
+    state.adminDataLoaded = true;
+    return payload;
   },
   reloadBootstrap: initializeApp
 };

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs/promises');
 const http = require('http');
 const path = require('path');
+const { promisify } = require('util');
 const { Pool } = require('pg');
 
 const { ownerSeed, seedCollections } = require('./seed-data');
@@ -13,6 +14,11 @@ const HOST = '0.0.0.0';
 const ROOT_DIR = __dirname;
 const OWNER_CREDENTIALS_KEY = 'owner_credentials';
 const COLLECTION_NAMES = new Set(Object.keys(seedCollections));
+const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'courses', 'leadership', 'assessments', 'reports', 'subscriptions']);
+const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
+const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
+const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
+const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD || ownerSeed.password;
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -22,15 +28,16 @@ const STATIC_FILES = new Map([
   ['/style.css', { file: 'style.css', type: 'text/css; charset=utf-8' }],
   ['/logo.svg', { file: 'logo.svg', type: 'image/svg+xml' }]
 ]);
+const scrypt = promisify(crypto.scrypt);
+const adminSessions = new Map();
 
 function createPoolConfig() {
   const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRESQL_URL;
+  const sslMode = connectionString ? new URL(connectionString).searchParams.get('sslmode') : '';
+  const sslEnabled = process.env.PGSSL === 'true' || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase());
+  const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED !== 'false';
   if (connectionString) {
-    const shouldUseSsl = !/(localhost|127\.0\.0\.1)/i.test(connectionString);
-    return {
-      connectionString,
-      ssl: shouldUseSsl ? { rejectUnauthorized: false } : false
-    };
+    return sslEnabled ? { connectionString, ssl: { rejectUnauthorized } } : { connectionString };
   }
 
   if (process.env.PGHOST) {
@@ -40,7 +47,7 @@ function createPoolConfig() {
       user: process.env.PGUSER,
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
-      ssl: /(localhost|127\.0\.0\.1)/i.test(process.env.PGHOST) ? false : { rejectUnauthorized: false }
+      ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized } : false
     };
   }
 
@@ -49,14 +56,14 @@ function createPoolConfig() {
 
 const pool = new Pool(createPoolConfig());
 
-function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+async function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  const derivedKey = (await scrypt(password, salt, 64)).toString('hex');
   return { salt, hash: derivedKey };
 }
 
-function verifyPassword(password, credentials) {
+async function verifyPassword(password, credentials) {
   if (!credentials?.salt || !credentials?.hash) return false;
-  const candidate = crypto.scryptSync(password, credentials.salt, 64);
+  const candidate = await scrypt(password, credentials.salt, 64);
   const expected = Buffer.from(credentials.hash, 'hex');
   return expected.length === candidate.length && crypto.timingSafeEqual(expected, candidate);
 }
@@ -100,15 +107,18 @@ async function replaceCollection(collectionName, items, client = pool) {
   }
 }
 
-async function loadCollections() {
+async function loadCollections(collectionNames = COLLECTION_NAMES) {
+  const requestedCollections = [...collectionNames];
   const result = await pool.query(
     `SELECT collection_name, payload
      FROM app_collection_items
-     ORDER BY collection_name ASC, position ASC, updated_at ASC`
+     WHERE collection_name = ANY($1::text[])
+     ORDER BY collection_name ASC, position ASC, updated_at ASC`,
+    [requestedCollections]
   );
 
   const collections = {};
-  for (const name of COLLECTION_NAMES) collections[name] = [];
+  for (const name of requestedCollections) collections[name] = [];
   for (const row of result.rows) {
     if (!collections[row.collection_name]) collections[row.collection_name] = [];
     collections[row.collection_name].push(row.payload);
@@ -166,7 +176,7 @@ async function ensureDatabase() {
 
     const existingOwner = await client.query('SELECT key FROM app_meta WHERE key = $1', [OWNER_CREDENTIALS_KEY]);
     if (!existingOwner.rowCount) {
-      const passwordHash = hashPassword(ownerSeed.password);
+      const passwordHash = await hashPassword(INITIAL_OWNER_PASSWORD);
       await setOwnerCredentials({ username: ownerSeed.username, ...passwordHash }, client);
     }
     await client.query('COMMIT');
@@ -198,7 +208,7 @@ async function readJsonBody(request) {
 
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 1024 * 1024) {
+    if (size > BODY_LIMIT_BYTES) {
       throw new Error('Request body is too large.');
     }
     chunks.push(chunk);
@@ -208,8 +218,52 @@ async function readJsonBody(request) {
   return raw ? JSON.parse(raw) : {};
 }
 
-async function handleBootstrap(response) {
-  const collections = await loadCollections();
+function cleanupExpiredSessions() {
+  const now = Date.now();
+  for (const [token, expiresAt] of adminSessions.entries()) {
+    if (expiresAt <= now) adminSessions.delete(token);
+  }
+}
+
+function createSessionToken() {
+  cleanupExpiredSessions();
+  const token = crypto.randomBytes(32).toString('hex');
+  adminSessions.set(token, Date.now() + OWNER_SESSION_TTL_MS);
+  return token;
+}
+
+function getRequestToken(request) {
+  const headerToken = request.headers['x-owner-token'];
+  if (typeof headerToken === 'string' && headerToken.trim()) return headerToken.trim();
+  const authHeader = request.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice('Bearer '.length).trim();
+  }
+  return '';
+}
+
+function isAuthorizedRequest(request) {
+  cleanupExpiredSessions();
+  const token = getRequestToken(request);
+  if (!token) return false;
+  const expiresAt = adminSessions.get(token);
+  if (!expiresAt) return false;
+  if (expiresAt <= Date.now()) {
+    adminSessions.delete(token);
+    return false;
+  }
+  adminSessions.set(token, Date.now() + OWNER_SESSION_TTL_MS);
+  return true;
+}
+
+function requireAdmin(request, response) {
+  if (isAuthorizedRequest(request)) return true;
+  sendJson(response, 401, { error: 'يلزم تسجيل دخول المالك أولاً' });
+  return false;
+}
+
+async function handleBootstrap(response, collectionNames = PUBLIC_COLLECTION_NAMES) {
+  const collections = await loadCollections(collectionNames);
   sendJson(response, 200, {
     collections,
     owner: { username: ownerSeed.username }
@@ -217,6 +271,7 @@ async function handleBootstrap(response) {
 }
 
 async function handleCollectionSave(request, response, pathname) {
+  if (!requireAdmin(request, response)) return;
   const collectionName = decodeURIComponent(pathname.replace('/api/collections/', ''));
   if (!COLLECTION_NAMES.has(collectionName)) {
     return sendJson(response, 404, { error: 'Unknown collection.' });
@@ -242,20 +297,21 @@ async function handleOwnerLogin(request, response) {
   const body = await readJsonBody(request);
   const credentials = await getOwnerCredentials();
   const matchesUser = body?.username === (credentials?.username || ownerSeed.username);
-  const matchesPassword = typeof body?.password === 'string' && verifyPassword(body.password, credentials);
+  const matchesPassword = typeof body?.password === 'string' && await verifyPassword(body.password, credentials);
 
   if (!matchesUser || !matchesPassword) {
     return sendJson(response, 401, { error: 'بيانات الدخول غير صحيحة' });
   }
 
-  sendJson(response, 200, { ok: true, username: credentials.username });
+  sendJson(response, 200, { ok: true, username: credentials.username, token: createSessionToken() });
 }
 
 async function handleOwnerPasswordChange(request, response) {
+  if (!requireAdmin(request, response)) return;
   const body = await readJsonBody(request);
   const credentials = await getOwnerCredentials();
 
-  if (!verifyPassword(body?.oldPassword || '', credentials)) {
+  if (!await verifyPassword(body?.oldPassword || '', credentials)) {
     return sendJson(response, 400, { error: 'كلمة المرور الحالية غير صحيحة' });
   }
 
@@ -263,7 +319,7 @@ async function handleOwnerPasswordChange(request, response) {
     return sendJson(response, 400, { error: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل' });
   }
 
-  const passwordHash = hashPassword(body.newPassword.trim());
+  const passwordHash = await hashPassword(body.newPassword.trim());
   await setOwnerCredentials({ username: credentials.username, ...passwordHash });
   sendJson(response, 200, { ok: true });
 }
@@ -305,6 +361,11 @@ async function handleRequest(request, response) {
 
   if (request.method === 'GET' && pathname === '/api/bootstrap') {
     return handleBootstrap(response);
+  }
+
+  if (request.method === 'GET' && pathname === '/api/admin/bootstrap') {
+    if (!requireAdmin(request, response)) return;
+    return handleBootstrap(response, ADMIN_COLLECTION_NAMES);
   }
 
   if (request.method === 'PUT' && pathname.startsWith('/api/collections/')) {

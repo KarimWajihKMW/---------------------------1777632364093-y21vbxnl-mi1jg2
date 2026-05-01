@@ -81,7 +81,7 @@ const seedCollections = {
 
 const ownerSeed = {
   username: 'admin',
-  password: '12345678'
+  password: 'ChangeMe-2026!'
 };
 
 module.exports = {

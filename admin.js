@@ -14,7 +14,7 @@ function isOwnerLoggedIn() {
 }
 
 function ownerLoginPage() {
-  return shell('دخول لوحة المالك', 'صفحة خاصة لإدارة البرامج والاشتراكات والمنتجات والعبارات والدعم. بيانات الدخول الافتراضية: admin / 12345678 ويمكن تغيير كلمة المرور من تبويب الأمان.', `
+  return shell('دخول لوحة المالك', 'صفحة خاصة لإدارة البرامج والاشتراكات والمنتجات والعبارات والدعم. اسم المستخدم الافتراضي هو admin وكلمة المرور الأولية تُحدد على الخادم ويمكن تغييرها من تبويب الأمان.', `
     <form class="mx-auto max-w-md rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); ownerLogin()">
       <div class="grid gap-4">
         <input id="ownerUser" autocomplete="username" required placeholder="اسم المستخدم" class="rounded-2xl border border-moss/10 px-4 py-3">
@@ -29,7 +29,9 @@ async function ownerLogin() {
   const pass = document.getElementById('ownerPass')?.value;
 
   try {
-    await window.adrekApi.loginOwner(user, pass);
+    const response = await window.adrekApi.loginOwner(user, pass);
+    window.adrekApi.setAdminToken(response.token);
+    await window.adrekApi.loadAdminData();
     ownerSessionStorage.setItem(OWNER_AUTH_KEY, 'true');
     showToast('تم دخول لوحة المالك');
     navigate('/admin/overview');
@@ -40,6 +42,7 @@ async function ownerLogin() {
 
 function ownerLogout() {
   ownerSessionStorage.removeItem(OWNER_AUTH_KEY);
+  window.adrekApi.clearAdminToken();
   showToast('تم تسجيل خروج المالك');
   navigate('/admin');
 }
@@ -217,7 +220,7 @@ function adminSupportPage() {
 }
 
 function adminSecurityPage() {
-  return `<form class="mx-auto max-w-xl rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); changeOwnerPassword()"><h3 class="font-display text-2xl font-extrabold text-moss">تغيير كلمة مرور المالك</h3><p class="mt-2 leading-7 text-ink/65">استخدم هذه الصفحة لتغيير كلمة المرور الافتراضية admin / 12345678 إلى كلمة خاصة محفوظة في قاعدة البيانات.</p><div class="mt-5 grid gap-4"><input id="oldOwnerPass" type="password" required placeholder="كلمة المرور الحالية" class="rounded-2xl border border-moss/10 px-4 py-3"><input id="newOwnerPass" type="password" required minlength="8" placeholder="كلمة المرور الجديدة" class="rounded-2xl border border-moss/10 px-4 py-3"><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">حفظ كلمة المرور</button></div></form>`;
+  return `<form class="mx-auto max-w-xl rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm" onsubmit="event.preventDefault(); changeOwnerPassword()"><h3 class="font-display text-2xl font-extrabold text-moss">تغيير كلمة مرور المالك</h3><p class="mt-2 leading-7 text-ink/65">استخدم هذه الصفحة لتغيير كلمة المرور الحالية إلى كلمة خاصة محفوظة في قاعدة البيانات.</p><div class="mt-5 grid gap-4"><input id="oldOwnerPass" type="password" required placeholder="كلمة المرور الحالية" class="rounded-2xl border border-moss/10 px-4 py-3"><input id="newOwnerPass" type="password" required minlength="8" placeholder="كلمة المرور الجديدة" class="rounded-2xl border border-moss/10 px-4 py-3"><button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">حفظ كلمة المرور</button></div></form>`;
 }
 
 async function changeOwnerPassword() {
@@ -233,7 +236,23 @@ async function changeOwnerPassword() {
 }
 
 function adminPage() {
-  if (!isOwnerLoggedIn()) return ownerLoginPage();
+  if (!isOwnerLoggedIn() || !window.adrekApi.hasAdminToken()) return ownerLoginPage();
+  if (!state.adminDataLoaded) {
+    if (!state.adminLoading) {
+      state.adminLoading = true;
+      window.adrekApi.loadAdminData()
+        .then(() => {
+          state.adminLoading = false;
+          render();
+        })
+        .catch((error) => {
+          state.adminLoading = false;
+          showToast(error.message || 'انتهت صلاحية جلسة المالك');
+          ownerLogout();
+        });
+    }
+    return shell('لوحة تحكم المالك', 'جاري تحميل البيانات الإدارية المحمية من قاعدة البيانات.', `<div class="rounded-[2rem] border border-white/70 bg-white/75 p-8 text-center shadow-calm"><p class="font-display text-2xl font-extrabold text-moss">تحميل بيانات الإدارة...</p></div>`, 'مسار خاص /admin');
+  }
   state.adminTab = state.route.split('/')[2] || 'overview';
   if (state.adminTab === 'subscriptions') state.adminCollection = 'subscriptions';
   if (state.adminTab === 'programs' && state.adminCollection === 'subscriptions') state.adminCollection = 'programs';
