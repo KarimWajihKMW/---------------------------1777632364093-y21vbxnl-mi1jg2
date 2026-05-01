@@ -15,11 +15,12 @@ const ROOT_DIR = __dirname;
 const OWNER_CREDENTIALS_KEY = 'owner_credentials';
 const USERS_TABLE = 'users';
 const SESSIONS_TABLE = 'sessions';
+const ELECTRONIC_PAYMENTS_TABLE = 'electronic_payments';
 const COLLECTION_NAMES = new Set(Object.keys(seedCollections));
 const COLLECTION_TABLE_NAMES = new Map(
   [...COLLECTION_NAMES].map((name) => [name, name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()])
 );
-const ALLOWED_TABLE_NAMES = new Set([...COLLECTION_TABLE_NAMES.values(), USERS_TABLE, SESSIONS_TABLE]);
+const ALLOWED_TABLE_NAMES = new Set([...COLLECTION_TABLE_NAMES.values(), USERS_TABLE, SESSIONS_TABLE, ELECTRONIC_PAYMENTS_TABLE]);
 const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'courses', 'leadership', 'assessments', 'reports', 'subscriptions']);
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
@@ -307,6 +308,23 @@ async function ensureDatabase() {
     );
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ${quoteIdentifier(ELECTRONIC_PAYMENTS_TABLE)} (
+      transaction_id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL,
+      amount NUMERIC(12, 2) NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'SAR',
+      method TEXT NOT NULL,
+      last4 TEXT NOT NULL,
+      cardholder TEXT NOT NULL,
+      client_name TEXT,
+      email TEXT,
+      status TEXT NOT NULL DEFAULT 'paid',
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -494,6 +512,64 @@ async function handleOwnerLogin(request, response) {
   sendJson(response, 200, { ok: true, username: credentials.username, token: await createSessionToken(credentials.username) });
 }
 
+async function handleBookingPayment(request, response) {
+  const body = await readJsonBody(request);
+  const amount = Number(body?.amount);
+  const bookingId = String(body?.bookingId || '').trim();
+  const method = String(body?.method || '').trim();
+  const cardholder = String(body?.cardholder || '').trim();
+  const last4 = String(body?.last4 || '').replace(/\D/g, '').slice(-4);
+  const currency = String(body?.currency || 'SAR').trim().toUpperCase();
+
+  if (!bookingId) return sendJson(response, 400, { error: 'رقم الحجز مطلوب لإتمام الدفع' });
+  if (!Number.isFinite(amount) || amount <= 0) return sendJson(response, 400, { error: 'قيمة الدفع غير صحيحة' });
+  if (!['SAR'].includes(currency)) return sendJson(response, 400, { error: 'عملة الدفع غير مدعومة' });
+  if (!['mada', 'visa', 'apple-pay'].includes(method)) return sendJson(response, 400, { error: 'وسيلة الدفع غير مدعومة' });
+  if (!cardholder || last4.length !== 4) return sendJson(response, 400, { error: 'بيانات البطاقة غير مكتملة' });
+
+  const transactionId = `PAY-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  const paidAt = new Date().toISOString();
+  const payload = {
+    gateway: 'Adrek Secure Checkout',
+    authorizationCode: crypto.randomBytes(4).toString('hex').toUpperCase(),
+    saveCardRequested: Boolean(body?.saveCard),
+    source: 'booking-confirmation'
+  };
+
+  await pool.query(
+    `INSERT INTO ${quoteIdentifier(ELECTRONIC_PAYMENTS_TABLE)}
+      (transaction_id, booking_id, amount, currency, method, last4, cardholder, client_name, email, status, payload, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'paid', $10::jsonb, $11)`,
+    [
+      transactionId,
+      bookingId,
+      amount.toFixed(2),
+      currency,
+      method,
+      last4,
+      cardholder,
+      String(body?.clientName || '').trim(),
+      String(body?.email || '').trim(),
+      JSON.stringify(payload),
+      paidAt
+    ]
+  );
+
+  sendJson(response, 200, {
+    ok: true,
+    payment: {
+      transactionId,
+      bookingId,
+      amount,
+      currency,
+      method,
+      last4,
+      status: 'paid',
+      paidAt
+    }
+  });
+}
+
 async function handleOwnerPasswordChange(request, response) {
   if (!await requireAdmin(request, response)) return;
   const body = await readJsonBody(request);
@@ -565,6 +641,10 @@ async function handleRequest(request, response) {
 
   if (request.method === 'POST' && pathname === '/api/auth/login') {
     return handleOwnerLogin(request, response);
+  }
+
+  if (request.method === 'POST' && pathname === '/api/payments/booking') {
+    return handleBookingPayment(request, response);
   }
 
   if (request.method === 'POST' && pathname === '/api/auth/password') {
