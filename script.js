@@ -15,6 +15,7 @@ const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
 const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
+const CHIP_ANIMATION_DELAY_STEP = 0.12;
 const HERO_CHIP_LABELS = ['ألوان هادئة مريحة', 'تجربة متوافقة مع الجوال', 'حجز وتقارير وحركة حية', 'رحلات علاجية وتطويرية مترابطة'];
 const HOME_MOTION_LABELS = ['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة'];
 
@@ -378,7 +379,7 @@ function homePage() {
           </div>
         </div>
         <div class="grid gap-4 sm:grid-cols-3">
-          ${pulseCard('جلسات مباشرة', 'مواعيد مرنة وحجز سريع مع مختصين معتمدين.')}${pulseCard('تقارير فورية', 'مؤشرات تقدم مرئية تتحرك مع كل مرحلة من الرحلة.')}${pulseCard('متابعة أسرية', 'تنبيهات ولغة بصرية مريحة على جميع الشاشات.')}
+          ${pulseCard('جلسات مباشرة', 'مواعيد مرنة وحجز سريع مع مختصين معتمدين.', 0)}${pulseCard('تقارير فورية', 'مؤشرات تقدم مرئية تتحرك مع كل مرحلة من الرحلة.', 1)}${pulseCard('متابعة أسرية', 'تنبيهات ولغة بصرية مريحة على جميع الشاشات.', 2)}
         </div>
       </div>
     </div>
@@ -425,9 +426,9 @@ function homePage() {
 }
 
 function stat(number, label) { return `<div class="rounded-3xl border border-white/70 bg-white/60 p-4 shadow-sm"><p class="font-display text-2xl font-extrabold text-moss">${number}</p><p class="text-xs font-bold text-ink/55">${label}</p></div>`; }
-function heroChip(label, index) { return `<span class="hero-chip rounded-full border border-moss/10 bg-white/80 px-4 py-3 text-sm font-extrabold text-moss shadow-sm" style="animation-delay:${index * 0.12}s">${label}</span>`; }
+function heroChip(label, index) { return `<span class="hero-chip rounded-full border border-moss/10 bg-white/80 px-4 py-3 text-sm font-extrabold text-moss shadow-sm" style="animation-delay:${index * CHIP_ANIMATION_DELAY_STEP}s">${label}</span>`; }
 function journey(title, meta, value) { return `<div class="rounded-3xl bg-white p-4 shadow-sm"><div class="mb-2 flex justify-between text-sm"><b class="text-moss">${title}</b><span class="text-ink/55">${meta}</span></div><div class="h-2 rounded-full bg-mint"><div class="progress-wave h-2 rounded-full" style="width:${value}%"></div></div></div>`; }
-function pulseCard(title, text) { return `<div class="pulse-card rounded-[1.8rem] border border-white/70 bg-white/70 p-5 shadow-sm"><p class="text-sm font-extrabold text-clay">${title}</p><p class="mt-2 leading-7 text-ink/65">${text}</p></div>`; }
+function pulseCard(title, text, index) { return `<div class="pulse-card rounded-[1.8rem] border border-white/70 bg-white/70 p-5 shadow-sm" style="animation-delay:${index * 0.4}s"><p class="text-sm font-extrabold text-clay">${title}</p><p class="mt-2 leading-7 text-ink/65">${text}</p></div>`; }
 function motionPill(label) { return `<span class="motion-pill rounded-full border border-moss/10 bg-[#f4efe2] px-4 py-2 text-sm font-extrabold text-moss">${label}</span>`; }
 function experiencePoint(title, text) { return `<div class="rounded-[1.6rem] bg-[#f7f1e4] p-4"><h3 class="font-display text-lg font-extrabold text-moss">${title}</h3><p class="mt-2 text-sm leading-7 text-ink/65">${text}</p></div>`; }
 function floatingInsight(title, text) { return `<div class="floating-insight rounded-[1.9rem] border border-white/70 bg-white/75 p-5 shadow-calm"><span class="inline-flex rounded-full bg-mint px-3 py-1 text-xs font-extrabold text-moss">إضاءة</span><h3 class="mt-4 font-display text-2xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-8 text-ink/65">${text}</p></div>`; }
