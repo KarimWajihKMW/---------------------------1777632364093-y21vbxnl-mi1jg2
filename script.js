@@ -16,12 +16,27 @@ const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
 const BOOKING_STORAGE_KEY = 'adrek-confirmed-bookings';
+const PAYMENT_STORAGE_KEY = 'adrek-booking-payments';
 const BOOKING_METHODS = [
   { id: 'video', label: 'جلسة مرئية', icon: '🎥', description: 'رابط اجتماع آمن يرسل بعد التأكيد مع تذكير قبل الموعد.' },
   { id: 'voice', label: 'اتصال فقط', icon: '📞', description: 'اتصال صوتي خاص لمن يفضل الخصوصية أو ضعف الاتصال المرئي.' }
 ];
 const BOOKING_SESSION_TYPES = ['إرشاد نفسي', 'كوتشينج مهني', 'إرشاد أسري', 'تطوير ذات', 'كوتشينج علاقات'];
 const BOOKING_TIME_SLOTS = ['09:00', '10:30', '12:00', '16:00', '17:30', '19:00', '20:30'];
+const PAYMENT_METHODS = [
+  { id: 'mada', label: 'بطاقة مدى', icon: '💳', note: 'خصم فوري عبر شبكة مدى مع إيصال إلكتروني.' },
+  { id: 'visa', label: 'فيزا / ماستر كارد', icon: '💳', note: 'دفع آمن بالبطاقات الائتمانية والمدينة.' },
+  { id: 'apple-pay', label: 'Apple Pay', icon: '', note: 'تأكيد سريع عبر المحفظة الرقمية عند توفرها.' }
+];
+const DEFAULT_PAYMENT_DRAFT = {
+  method: 'mada',
+  cardholder: '',
+  number: '',
+  expiry: '',
+  cvv: '',
+  saveCard: false
+};
+const PAYMENT_VAT_RATE = 0.15;
 const DEFAULT_BOOKING_DRAFT = {
   sessionType: 'إرشاد نفسي',
   coachId: '',
@@ -99,7 +114,9 @@ const state = {
   adminLoading: false,
   bookingStep: 1,
   booking: { ...DEFAULT_BOOKING_DRAFT },
-  bookingConfirmation: null
+  bookingConfirmation: null,
+  payment: { ...DEFAULT_PAYMENT_DRAFT },
+  paymentProcessing: false
 };
 
 const createSafeStorage = (storageName) => {
@@ -579,6 +596,20 @@ function getStoredBookings() {
   try { const value = JSON.parse(adrekStorage.local.getItem(BOOKING_STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch (error) { return []; }
 }
 function saveStoredBookings(items) { adrekStorage.local.setItem(BOOKING_STORAGE_KEY, JSON.stringify(items.slice(0, 30))); }
+function getStoredPayments() {
+  try { const value = JSON.parse(adrekStorage.local.getItem(PAYMENT_STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch (error) { return []; }
+}
+function saveStoredPayments(items) { adrekStorage.local.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(items.slice(0, 30))); }
+function findBookingById(id) { return getStoredBookings().find((booking) => String(booking.id) === String(id)) || null; }
+function findPaymentByBookingId(id) { return getStoredPayments().find((payment) => String(payment.bookingId) === String(id) && payment.status === 'paid') || null; }
+function updateStoredBookingStatus(id, status, payment = null) {
+  const bookings = getStoredBookings();
+  const index = bookings.findIndex((booking) => String(booking.id) === String(id));
+  if (index < 0) return null;
+  bookings[index] = { ...bookings[index], status, paymentStatus: payment?.status || bookings[index].paymentStatus || 'pending', paymentId: payment?.transactionId || bookings[index].paymentId || '', paidAt: payment?.paidAt || bookings[index].paidAt || '' };
+  saveStoredBookings(bookings);
+  return bookings[index];
+}
 function bookingCoach() { return coaches.find((coach) => String(coach.id) === String(state.booking.coachId)) || null; }
 function bookingMethod() { return BOOKING_METHODS.find((method) => method.id === state.booking.method) || BOOKING_METHODS[0]; }
 function formatBookingDate(value, compact = false) {
@@ -596,6 +627,18 @@ function bookingDates() {
 function bookingSlots(coachId, date) {
   const reserved = getStoredBookings().filter((item) => String(item.coachId) === String(coachId) && item.date === date).map((item) => item.time);
   return BOOKING_TIME_SLOTS.map((time, index) => ({ time, disabled: (index + (Number(coachId) || 1)) % 5 === 0 || reserved.includes(time) }));
+}
+function calculatePaymentTotals(price = 0) {
+  const subtotal = Number(price) || 0;
+  const vat = Math.round(subtotal * PAYMENT_VAT_RATE * 100) / 100;
+  return { subtotal, vat, total: Math.round((subtotal + vat) * 100) / 100 };
+}
+function formatCurrency(value = 0) { return `${Number(value || 0).toLocaleString('ar-SA')} ر.س`; }
+function maskCardNumber(value = '') { return String(value).replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19); }
+function paymentMethod() { return PAYMENT_METHODS.find((method) => method.id === state.payment.method) || PAYMENT_METHODS[0]; }
+function updatePaymentField(field, value) {
+  state.payment[field] = field === 'saveCard' ? Boolean(value) : field === 'number' ? maskCardNumber(value) : value;
+  render();
 }
 function bookingStepError(step) {
   const draft = state.booking;
@@ -653,11 +696,77 @@ function resetBooking() {
   navigate('/booking');
 }
 
+function paymentError(booking) {
+  const draft = state.payment;
+  if (!booking) return 'تعذر العثور على الحجز المطلوب للدفع.';
+  if (findPaymentByBookingId(booking.id)) return 'تم دفع هذا الحجز مسبقاً.';
+  if (!draft.method) return 'اختر وسيلة الدفع الإلكتروني.';
+  if (!draft.cardholder.trim()) return 'اكتب اسم حامل البطاقة.';
+  const digits = draft.number.replace(/\D/g, '');
+  if (digits.length < 12 || digits.length > 19) return 'أدخل رقم بطاقة صحيح.';
+  if (!/^\d{2}\/\d{2}$/.test(draft.expiry.trim())) return 'أدخل تاريخ الانتهاء بصيغة MM/YY.';
+  if (!/^\d{3,4}$/.test(draft.cvv.trim())) return 'أدخل رمز التحقق الصحيح.';
+  return '';
+}
+
+async function processBookingPayment(bookingId) {
+  const booking = findBookingById(bookingId) || (state.bookingConfirmation?.id === bookingId ? state.bookingConfirmation : null);
+  const error = paymentError(booking);
+  if (error) return showToast(error);
+  const totals = calculatePaymentTotals(booking.price);
+  const cardDigits = state.payment.number.replace(/\D/g, '');
+  state.paymentProcessing = true;
+  render();
+  try {
+    const response = await apiRequest('/api/payments/booking', {
+      method: 'POST',
+      body: JSON.stringify({
+        bookingId: booking.id,
+        amount: totals.total,
+        currency: 'SAR',
+        method: state.payment.method,
+        cardholder: state.payment.cardholder,
+        last4: cardDigits.slice(-4),
+        clientName: booking.clientName,
+        email: booking.email
+      })
+    });
+    const payment = { ...response.payment, bookingId: booking.id, methodLabel: paymentMethod().label, paidAt: response.payment?.paidAt || new Date().toISOString() };
+    saveStoredPayments([payment, ...getStoredPayments().filter((item) => String(item.bookingId) !== String(booking.id))]);
+    const updated = updateStoredBookingStatus(booking.id, 'مدفوع ومؤكد نهائياً', payment) || { ...booking, status: 'مدفوع ومؤكد نهائياً', paymentStatus: 'paid', paymentId: payment.transactionId, paidAt: payment.paidAt };
+    state.bookingConfirmation = updated;
+    state.payment = { ...DEFAULT_PAYMENT_DRAFT };
+    showToast('تم الدفع الإلكتروني وتثبيت الحجز نهائياً');
+    navigate('/booking/confirmation');
+  } catch (error) {
+    showToast(error.message || 'تعذر إتمام عملية الدفع.');
+  } finally {
+    state.paymentProcessing = false;
+    render();
+  }
+}
+
+function bookingPaymentPage(bookingId) {
+  const booking = findBookingById(bookingId) || (state.bookingConfirmation?.id === bookingId ? state.bookingConfirmation : null);
+  if (!booking) return shell('الحجز غير موجود', 'لا يمكن فتح صفحة الدفع دون رقم حجز مؤكد.', `<button onclick="resetBooking()" class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">بدء حجز جديد</button>`, 'دفع إلكتروني');
+  const paidPayment = findPaymentByBookingId(booking.id);
+  const totals = calculatePaymentTotals(booking.price);
+  const methods = PAYMENT_METHODS.map((method) => `<button type="button" onclick="updatePaymentField('method','${method.id}')" class="rounded-2xl border p-4 text-right ${state.payment.method === method.id ? 'border-moss bg-mint' : 'border-moss/10 bg-white'}"><b class="text-moss">${method.icon} ${method.label}</b><p class="mt-1 text-sm text-ink/60">${method.note}</p></button>`).join('');
+  if (paidPayment) {
+    return shell('تم الدفع مسبقاً', 'هذا الحجز مثبت ومدفوع إلكترونياً ويمكنك الرجوع لتفاصيل التأكيد.', `<div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">مدفوع</span><h2 class="mt-4 font-display text-3xl font-extrabold text-moss">${escapeHTML(paidPayment.transactionId)}</h2><p class="mt-3 text-ink/65">تم السداد بمبلغ ${formatCurrency(paidPayment.amount)}.</p><button onclick="navigate('/booking/confirmation')" class="mt-5 rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">العودة للتأكيد</button></div>`, 'مسار عميق /booking/payment');
+  }
+  return shell('الدفع الإلكتروني لتثبيت الحجز', 'بعد تأكيد الموعد يمكنك إتمام السداد الآمن وإصدار إيصال إلكتروني وربط حالة الدفع بالحجز مباشرة.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><form class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm" onsubmit="event.preventDefault(); processBookingPayment('${escapeHTML(booking.id)}')"><h3 class="font-display text-2xl font-extrabold text-moss">اختر وسيلة الدفع</h3><div class="mt-4 grid gap-3 md:grid-cols-3">${methods}</div><div class="mt-6 grid gap-3 md:grid-cols-2"><input required value="${escapeHTML(state.payment.cardholder)}" oninput="state.payment.cardholder=this.value" placeholder="اسم حامل البطاقة" class="rounded-2xl border border-moss/10 px-4 py-3"><input required inputmode="numeric" value="${escapeHTML(state.payment.number)}" oninput="this.value=maskCardNumber(this.value); state.payment.number=this.value" placeholder="رقم البطاقة" class="rounded-2xl border border-moss/10 px-4 py-3"><input required inputmode="numeric" maxlength="5" value="${escapeHTML(state.payment.expiry)}" oninput="state.payment.expiry=this.value" placeholder="MM/YY" class="rounded-2xl border border-moss/10 px-4 py-3"><input required inputmode="numeric" maxlength="4" value="${escapeHTML(state.payment.cvv)}" oninput="state.payment.cvv=this.value" placeholder="CVV" class="rounded-2xl border border-moss/10 px-4 py-3"></div><label class="mt-4 flex gap-3 rounded-2xl bg-mint/55 p-4 font-bold text-ink/70"><input type="checkbox" ${state.payment.saveCard ? 'checked' : ''} onchange="state.payment.saveCard=this.checked"> حفظ البطاقة بشكل رمزي للمدفوعات القادمة دون تخزين رقم البطاقة كاملاً.</label><button ${state.paymentProcessing ? 'disabled' : ''} class="mt-5 w-full rounded-2xl bg-moss px-6 py-4 font-extrabold text-white shadow-leaf">${state.paymentProcessing ? 'جاري معالجة الدفع...' : `ادفع الآن ${formatCurrency(totals.total)}`}</button></form><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">ملخص الدفع</h3><div class="mt-5 grid gap-3"><div class="rounded-2xl bg-white/10 p-4"><b>رقم الحجز</b><p>${escapeHTML(booking.id)}</p></div><div class="rounded-2xl bg-white/10 p-4"><b>المختص</b><p>${escapeHTML(booking.coachName)}</p></div><div class="rounded-2xl bg-white/10 p-4"><b>الموعد</b><p>${formatBookingDate(booking.date)} · ${escapeHTML(booking.time)}</p></div></div><dl class="mt-5 grid gap-2 border-t border-white/15 pt-5"><div class="flex justify-between"><dt>قيمة الجلسة</dt><dd>${formatCurrency(totals.subtotal)}</dd></div><div class="flex justify-between"><dt>ضريبة القيمة المضافة 15%</dt><dd>${formatCurrency(totals.vat)}</dd></div><div class="flex justify-between text-xl font-extrabold"><dt>الإجمالي</dt><dd>${formatCurrency(totals.total)}</dd></div></dl><p class="mt-5 rounded-2xl bg-white/10 p-4 text-sm leading-7 text-white/75">يتم تسجيل آخر 4 أرقام فقط وإصدار معرف عملية آمن عند نجاح الدفع.</p></aside></div>`, 'مسار عميق /booking/payment/:id');
+}
+
 function bookingConfirmationPage() {
   const item = state.bookingConfirmation || getStoredBookings()[0];
   if (!item) return shell('لا يوجد حجز مؤكد بعد', 'ابدأ الحجز من صفحة المواعيد لاختيار مستشار وتاريخ ووقت مناسبين.', `<button onclick="resetBooking()" class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white">بدء حجز جديد</button>`, 'تأكيد الحجز');
-  const nextSteps = ['استكمال الدفع الآمن لتثبيت الموعد نهائياً.', item.method === 'video' ? 'سيتم إرسال رابط الجلسة المرئية قبل الموعد.' : 'سيتم تثبيت رقم الاتصال الصوتي الخاص بالجلسة.', 'يمكن تعديل الموعد قبل 12 ساعة من بدايته.', 'سيصل تذكير حسب القناة المختارة.'];
-  return shell('تم تأكيد الموعد', 'تم إصدار رقم حجز واضح مع تفاصيل الموعد ونوع الجلسة وخطوات ما بعد الحجز.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(item.status)}</span><h2 class="mt-4 font-display text-4xl font-extrabold text-moss">${escapeHTML(item.id)}</h2><div class="mt-6 grid gap-4 md:grid-cols-2">${[['المستفيد', item.clientName], ['المختص', item.coachName], ['نوع الاستشارة', item.sessionType], ['نوع الحجز', item.methodLabel], ['التاريخ', formatBookingDate(item.date)], ['الوقت', item.time], ['التكلفة', `${item.price} ر.س`], ['التذكير', item.reminder]].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div></div><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">الخطوات التالية</h3><div class="mt-5 grid gap-3">${nextSteps.map((next, index) => `<div class="rounded-2xl bg-white/10 p-4"><b>${index + 1}.</b> ${next}</div>`).join('')}</div><button onclick="resetBooking()" class="mt-5 w-full rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حجز موعد آخر</button></aside></div>`, 'مسار عميق /booking/confirmation');
+  const payment = findPaymentByBookingId(item.id);
+  const totals = calculatePaymentTotals(item.price);
+  const isPaid = Boolean(payment) || item.paymentStatus === 'paid';
+  const nextSteps = [isPaid ? 'تم الدفع الإلكتروني وتثبيت الموعد نهائياً.' : 'استكمال الدفع الآمن لتثبيت الموعد نهائياً.', item.method === 'video' ? 'سيتم إرسال رابط الجلسة المرئية قبل الموعد.' : 'سيتم تثبيت رقم الاتصال الصوتي الخاص بالجلسة.', 'يمكن تعديل الموعد قبل 12 ساعة من بدايته.', 'سيصل تذكير حسب القناة المختارة.'];
+  const paymentPanel = isPaid ? `<div class="mt-5 rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">حالة الدفع</span><p class="mt-1 font-bold text-moss">مدفوع إلكترونياً · ${escapeHTML(payment?.transactionId || item.paymentId || 'تم السداد')}</p></div>` : `<div class="mt-5 rounded-2xl border border-clay/20 bg-sand/70 p-4"><span class="text-xs font-extrabold text-ink/50">مطلوب للدفع</span><p class="mt-1 font-display text-2xl font-extrabold text-moss">${formatCurrency(totals.total)}</p><p class="mt-1 text-sm text-ink/60">تشمل ضريبة القيمة المضافة 15%</p><button onclick="navigate('/booking/payment/${escapeHTML(item.id)}')" class="mt-4 w-full rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">الدفع الإلكتروني الآن</button></div>`;
+  return shell('تم تأكيد الموعد', 'تم إصدار رقم حجز واضح مع تفاصيل الموعد ونوع الجلسة وخطوات ما بعد الحجز، ويمكنك إتمام الدفع الإلكتروني مباشرة من هذه الصفحة.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(isPaid ? 'مدفوع ومؤكد نهائياً' : item.status)}</span><h2 class="mt-4 font-display text-4xl font-extrabold text-moss">${escapeHTML(item.id)}</h2><div class="mt-6 grid gap-4 md:grid-cols-2">${[['المستفيد', item.clientName], ['المختص', item.coachName], ['نوع الاستشارة', item.sessionType], ['نوع الحجز', item.methodLabel], ['التاريخ', formatBookingDate(item.date)], ['الوقت', item.time], ['التكلفة', `${item.price} ر.س`], ['التذكير', item.reminder]].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div>${paymentPanel}</div><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">الخطوات التالية</h3><div class="mt-5 grid gap-3">${nextSteps.map((next, index) => `<div class="rounded-2xl bg-white/10 p-4"><b>${index + 1}.</b> ${next}</div>`).join('')}</div><button onclick="resetBooking()" class="mt-5 w-full rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حجز موعد آخر</button></aside></div>`, 'مسار عميق /booking/confirmation');
 }
 
 function loginPage() {
@@ -692,6 +801,8 @@ function render() {
     app.innerHTML = coach
       ? shell(coach.name, `${coach.specialty} · ${coach.city} · تقييم ${coach.rating}`, `<div class="grid gap-6 lg:grid-cols-2"><div class="rounded-[2rem] bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">نبذة مهنية</h3><p class="mt-4 leading-8 text-ink/65">مختص بخبرة ${coach.experience} سنوات في ${coach.badge}. يقدم جلسات فردية وخطط متابعة وتقارير تقدم مختصرة.</p></div><div class="rounded-[2rem] bg-moss p-6 text-white"><h3 class="font-display text-2xl font-extrabold">أقرب موعد</h3><p class="mt-4 text-white/75">${coach.next}</p><button onclick="bookCoach(${coach.id})" class="mt-6 rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">احجز الآن</button></div></div>`, 'صفحة تفصيلية')
       : notFoundPage();
+  } else if (base.startsWith('/booking/payment/')) {
+    app.innerHTML = bookingPaymentPage(decodeURIComponent(base.split('/').pop()));
   } else if (base.startsWith('/programs/')) {
     app.innerHTML = catalogDetailPage(programs.find((program) => program.id === Number(base.split('/').pop())), '/programs', 'صفحة عميقة للمنتجات الرقمية', 'إضافة للسلة');
   } else if (base.startsWith('/children-programs/')) {
@@ -748,6 +859,9 @@ window.updateBookingField = updateBookingField;
 window.chooseBookingSlot = chooseBookingSlot;
 window.confirmBooking = confirmBooking;
 window.resetBooking = resetBooking;
+window.updatePaymentField = updatePaymentField;
+window.processBookingPayment = processBookingPayment;
+window.maskCardNumber = maskCardNumber;
 window.adminCollections = adminCollections;
 window.ADMIN_STATUS_OPTIONS = ADMIN_STATUS_OPTIONS;
 window.OWNER_AUTH_KEY = OWNER_AUTH_KEY;
