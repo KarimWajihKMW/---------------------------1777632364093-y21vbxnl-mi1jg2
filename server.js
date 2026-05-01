@@ -41,12 +41,22 @@ function resolveConnectionString() {
     .find(Boolean) || '';
 }
 
+function parseConnectionStringUrl(connectionString) {
+  if (!connectionString) return null;
+  try {
+    return new URL(connectionString);
+  } catch (error) {
+    throw new Error('Invalid PostgreSQL connection string.');
+  }
+}
+
 function resolveSslConfig() {
   const connectionString = resolveConnectionString();
-  const connectionHost = connectionString ? new URL(connectionString).hostname : '';
+  const connectionUrl = parseConnectionStringUrl(connectionString);
+  const connectionHost = connectionUrl?.hostname || '';
   const sslMode = String(
     process.env.PGSSLMODE
-    || (connectionString ? new URL(connectionString).searchParams.get('sslmode') : '')
+    || connectionUrl?.searchParams.get('sslmode')
     || ''
   ).toLowerCase();
   const sslEnabled = process.env.PGSSL === 'true'
