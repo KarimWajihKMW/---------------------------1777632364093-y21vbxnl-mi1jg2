@@ -1,0 +1,16 @@
+{
+  "name": "---------------------------1777632364093-y21vbxnl-mi1jg2",
+  "version": "1.0.0",
+  "description": "Super build for يشبه-حجز-الاطباء-لاستشارات-1777632364093",
+  "main": "server.js",
+  "scripts": {
+    "test": "node --check server.js && node --check seed-data.js && node --check script.js && node --check admin.js && node --check settings.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^8.20.0"
+  }
+}
