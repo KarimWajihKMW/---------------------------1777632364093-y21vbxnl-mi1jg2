@@ -41,14 +41,17 @@ img, svg { max-width: 100%; }
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
   font-weight: 700;
-  color: rgba(36, 51, 44, 0.72);
-  transition: transform .25s ease, background .25s ease, color .25s ease;
+  color: #fff;
+  background: linear-gradient(135deg, var(--moss), #3d7256);
+  border: 1px solid rgba(49, 92, 69, .18);
+  box-shadow: 0 12px 30px rgba(49, 92, 69, .16);
+  transition: transform .25s ease, background .25s ease, color .25s ease, box-shadow .25s ease;
 }
 .nav-link:hover, .nav-link.active {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, rgba(221, 235, 221, .9), rgba(237, 226, 203, .92));
-  color: var(--moss);
-  box-shadow: 0 16px 34px rgba(49, 92, 69, .10);
+  background: linear-gradient(135deg, #274b38, var(--moss));
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(49, 92, 69, .22);
 }
 .nav-link:focus, .footer-link:focus, button:focus, a:focus, input:focus, select:focus, textarea:focus {
   outline: none;
@@ -64,10 +67,20 @@ input, select, textarea {
 }
 input::placeholder, textarea::placeholder { color: rgba(36, 51, 44, .45); }
 
-:is(a, button)[class~="bg-moss"] { color: #fff; }
+:is(a, button)[class~="bg-moss"],
 :is(a, button)[class~="bg-white"],
 :is(a, button)[class~="bg-mint"],
-:is(a, button)[class~="bg-sand"] { color: var(--moss); }
+:is(a, button)[class~="bg-sand"],
+:is(a, button)[class~="bg-red-50"],
+:is(a, button).soft-button,
+.tone-tab,
+a[data-route][class*="rounded-2xl"]:not(.group),
+button {
+  color: #fff;
+  background: linear-gradient(135deg, var(--moss), #3d7256);
+  border-color: rgba(49, 92, 69, .18);
+  box-shadow: 0 12px 30px rgba(49, 92, 69, .16);
+}
 
 :is(a, button)[class*="rounded-2xl"],
 :is(a, button)[class*="rounded-xl"] {
@@ -81,22 +94,18 @@ input::placeholder, textarea::placeholder { color: rgba(36, 51, 44, .45); }
   justify-content: center;
   border-radius: 1rem;
   padding: .8rem 1rem;
-  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(244, 239, 226, .98));
-  color: var(--moss);
   font-size: .92rem;
   font-weight: 800;
   transition: transform .25s ease, box-shadow .25s ease, background .25s ease, color .25s ease;
-  border: 1px solid rgba(49, 92, 69, .12);
-  box-shadow: 0 12px 28px rgba(49, 92, 69, .08);
 }
 
 .tone-tab:hover {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, rgba(221, 235, 221, .96), rgba(237, 226, 203, .98));
+  background: linear-gradient(135deg, #274b38, var(--moss));
 }
 
 .tone-tab-active {
-  background: linear-gradient(135deg, var(--moss), #3d7256);
+  background: linear-gradient(135deg, #23412f, #2d563f);
   color: #fff;
   box-shadow: 0 16px 36px rgba(49, 92, 69, .24);
 }
