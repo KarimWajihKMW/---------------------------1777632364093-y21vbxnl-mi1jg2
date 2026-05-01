@@ -215,6 +215,27 @@ async function syncCollectionTable(collectionName, normalizedItems, client = poo
   }
 }
 
+async function ensureCollectionMirror(collectionName, client = pool) {
+  const tableName = quoteIdentifier(getCollectionTableName(collectionName));
+  const mirrorCountResult = await client.query(`SELECT COUNT(*)::int AS count FROM ${tableName}`);
+  if (mirrorCountResult.rows[0].count) return;
+
+  const sourceResult = await client.query(
+    `SELECT payload
+     FROM app_collection_items
+     WHERE collection_name = $1
+     ORDER BY position ASC, updated_at ASC`,
+    [collectionName]
+  );
+
+  if (!sourceResult.rowCount) return;
+  await syncCollectionTable(
+    collectionName,
+    normalizeItems(collectionName, sourceResult.rows.map((row) => row.payload)),
+    client
+  );
+}
+
 async function syncOwnerUser(credentials, client = pool) {
   if (!credentials?.username || !credentials?.salt || !credentials?.hash) return;
   await client.query(
@@ -296,9 +317,8 @@ async function ensureDatabase() {
       }
     }
 
-    const currentCollections = await loadCollections(COLLECTION_NAMES, client);
-    for (const [collectionName, items] of Object.entries(currentCollections)) {
-      await syncCollectionTable(collectionName, normalizeItems(collectionName, items), client);
+    for (const collectionName of COLLECTION_NAMES) {
+      await ensureCollectionMirror(collectionName, client);
     }
 
     const existingOwner = await client.query('SELECT key FROM app_meta WHERE key = $1', [OWNER_CREDENTIALS_KEY]);
