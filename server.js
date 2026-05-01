@@ -13,11 +13,18 @@ const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 const ROOT_DIR = __dirname;
 const OWNER_CREDENTIALS_KEY = 'owner_credentials';
+const USERS_TABLE = 'users';
+const SESSIONS_TABLE = 'sessions';
 const COLLECTION_NAMES = new Set(Object.keys(seedCollections));
+const COLLECTION_TABLE_NAMES = new Map(
+  [...COLLECTION_NAMES].map((name) => [name, name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()])
+);
+const ALLOWED_TABLE_NAMES = new Set([...COLLECTION_TABLE_NAMES.values(), USERS_TABLE, SESSIONS_TABLE]);
 const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'courses', 'leadership', 'assessments', 'reports', 'subscriptions']);
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
+const MAX_SESSION_TOKEN_RETRIES = 5;
 const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || null;
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -41,13 +48,54 @@ function resolveConnectionString() {
     .find(Boolean) || '';
 }
 
-function createPoolConfig() {
+function quoteIdentifier(identifier) {
+  if (!ALLOWED_TABLE_NAMES.has(identifier)) {
+    throw new Error(`Invalid PostgreSQL identifier: ${identifier}`);
+  }
+  return `"${identifier}"`;
+}
+
+function getCollectionTableName(collectionName) {
+  const tableName = COLLECTION_TABLE_NAMES.get(collectionName);
+  if (!tableName) {
+    throw new Error(`Unknown collection table for "${collectionName}".`);
+  }
+  return tableName;
+}
+
+function parseConnectionStringUrl(connectionString) {
+  if (!connectionString) return null;
+  try {
+    return new URL(connectionString);
+  } catch (error) {
+    throw new Error(`Invalid PostgreSQL connection string: ${error.message}`);
+  }
+}
+
+function resolveRejectUnauthorized(sslMode) {
+  if (process.env.PGSSL_REJECT_UNAUTHORIZED === 'true') return true;
+  if (process.env.PGSSL_REJECT_UNAUTHORIZED === 'false') return false;
+  return ['verify-ca', 'verify-full'].includes(sslMode);
+}
+
+function resolveSslConfig() {
   const connectionString = resolveConnectionString();
-  const sslMode = connectionString ? new URL(connectionString).searchParams.get('sslmode') : '';
+  const connectionUrl = parseConnectionStringUrl(connectionString);
+  const databaseHost = connectionUrl?.hostname || process.env.PGHOST || '';
+  const sslMode = String(
+    process.env.PGSSLMODE
+    || connectionUrl?.searchParams.get('sslmode')
+    || ''
+  ).toLowerCase();
   const sslEnabled = process.env.PGSSL === 'true'
-    || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase())
-    || (connectionString && !isLocalDatabaseHost(new URL(connectionString).hostname));
-  const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED !== 'false';
+    || ['require', 'verify-ca', 'verify-full'].includes(sslMode)
+    || (databaseHost && !isLocalDatabaseHost(databaseHost));
+  const rejectUnauthorized = resolveRejectUnauthorized(sslMode);
+  return { connectionString, sslEnabled, rejectUnauthorized };
+}
+
+function createPoolConfig() {
+  const { connectionString, sslEnabled, rejectUnauthorized } = resolveSslConfig();
   if (connectionString) {
     return sslEnabled ? { connectionString, ssl: { rejectUnauthorized } } : { connectionString };
   }
@@ -59,7 +107,7 @@ function createPoolConfig() {
       user: process.env.PGUSER,
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
-      ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized } : false
+      ssl: sslEnabled ? { rejectUnauthorized } : false
     };
   }
 
@@ -109,6 +157,7 @@ function normalizeItems(collectionName, items) {
 async function replaceCollection(collectionName, items, client = pool) {
   const normalized = normalizeItems(collectionName, items);
   await client.query('DELETE FROM app_collection_items WHERE collection_name = $1', [collectionName]);
+  await syncCollectionTable(collectionName, normalized, client);
 
   for (const entry of normalized) {
     await client.query(
@@ -119,9 +168,9 @@ async function replaceCollection(collectionName, items, client = pool) {
   }
 }
 
-async function loadCollections(collectionNames = COLLECTION_NAMES) {
+async function loadCollections(collectionNames = COLLECTION_NAMES, client = pool) {
   const requestedCollections = [...collectionNames];
-  const result = await pool.query(
+  const result = await client.query(
     `SELECT collection_name, payload
      FROM app_collection_items
      WHERE collection_name = ANY($1::text[])
@@ -138,8 +187,8 @@ async function loadCollections(collectionNames = COLLECTION_NAMES) {
   return collections;
 }
 
-async function getOwnerCredentials() {
-  const result = await pool.query('SELECT value FROM app_meta WHERE key = $1', [OWNER_CREDENTIALS_KEY]);
+async function getOwnerCredentials(client = pool) {
+  const result = await client.query('SELECT value FROM app_meta WHERE key = $1', [OWNER_CREDENTIALS_KEY]);
   return result.rows[0]?.value || null;
 }
 
@@ -151,6 +200,62 @@ async function setOwnerCredentials(value, client = pool) {
      DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
     [OWNER_CREDENTIALS_KEY, JSON.stringify(value)]
   );
+  await syncOwnerUser(value, client);
+}
+
+async function syncCollectionTable(collectionName, normalizedItems, client = pool) {
+  const tableName = quoteIdentifier(getCollectionTableName(collectionName));
+  await client.query(`DELETE FROM ${tableName}`);
+  for (const entry of normalizedItems) {
+    await client.query(
+      `INSERT INTO ${tableName} (item_key, position, payload)
+       VALUES ($1, $2, $3::jsonb)`,
+      [entry.itemKey, entry.position, JSON.stringify(entry.payload)]
+    );
+  }
+}
+
+async function ensureCollectionMirror(collectionName, client = pool) {
+  if (!COLLECTION_NAMES.has(collectionName)) {
+    throw new Error(`Unknown collection mirror "${collectionName}".`);
+  }
+  const tableName = quoteIdentifier(getCollectionTableName(collectionName));
+  const mirrorPresenceResult = await client.query(`SELECT EXISTS(SELECT 1 FROM ${tableName} LIMIT 1) AS has_rows`);
+  if (mirrorPresenceResult.rows[0]?.has_rows) return;
+
+  const sourceResult = await client.query(
+    `SELECT payload
+     FROM app_collection_items
+     WHERE collection_name = $1
+     ORDER BY position ASC, updated_at ASC`,
+    [collectionName]
+  );
+
+  if (sourceResult.rowCount === 0) return;
+  await syncCollectionTable(
+    collectionName,
+    normalizeItems(collectionName, sourceResult.rows.map((row) => row.payload)),
+    client
+  );
+}
+
+async function syncOwnerUser(credentials, client = pool) {
+  if (!credentials?.username || !credentials?.salt || !credentials?.hash) return;
+  await client.query(
+    `INSERT INTO ${quoteIdentifier(USERS_TABLE)} (username, password_salt, password_hash)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (username)
+     DO UPDATE SET password_salt = EXCLUDED.password_salt, password_hash = EXCLUDED.password_hash, updated_at = NOW()`,
+    [credentials.username, credentials.salt, credentials.hash]
+  );
+}
+
+async function cleanupExpiredSessions(client = pool) {
+  const now = Date.now();
+  for (const [token, expiresAt] of adminSessions.entries()) {
+    if (expiresAt <= now) adminSessions.delete(token);
+  }
+  await client.query(`DELETE FROM ${quoteIdentifier(SESSIONS_TABLE)} WHERE expires_at <= NOW()`);
 }
 
 async function ensureDatabase() {
@@ -173,6 +278,35 @@ async function ensureDatabase() {
     );
   `);
 
+  for (const tableName of COLLECTION_TABLE_NAMES.values()) {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${quoteIdentifier(tableName)} (
+        item_key TEXT PRIMARY KEY,
+        position INTEGER NOT NULL DEFAULT 0,
+        payload JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ${quoteIdentifier(USERS_TABLE)} (
+      username TEXT PRIMARY KEY,
+      password_salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ${quoteIdentifier(SESSIONS_TABLE)} (
+      token TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -186,6 +320,10 @@ async function ensureDatabase() {
       }
     }
 
+    for (const collectionName of COLLECTION_NAMES) {
+      await ensureCollectionMirror(collectionName, client);
+    }
+
     const existingOwner = await client.query('SELECT key FROM app_meta WHERE key = $1', [OWNER_CREDENTIALS_KEY]);
     if (!existingOwner.rowCount) {
       if (!INITIAL_OWNER_PASSWORD) {
@@ -194,6 +332,8 @@ async function ensureDatabase() {
       const passwordHash = await hashPassword(INITIAL_OWNER_PASSWORD);
       await setOwnerCredentials({ username: ownerSeed.username, ...passwordHash }, client);
     }
+    await syncOwnerUser(await getOwnerCredentials(client), client);
+    await cleanupExpiredSessions(client);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -233,18 +373,24 @@ async function readJsonBody(request) {
   return raw ? JSON.parse(raw) : {};
 }
 
-function cleanupExpiredSessions() {
-  const now = Date.now();
-  for (const [token, expiresAt] of adminSessions.entries()) {
-    if (expiresAt <= now) adminSessions.delete(token);
+async function createSessionToken(username, client = pool) {
+  await cleanupExpiredSessions(client);
+  for (let attempt = 0; attempt < MAX_SESSION_TOKEN_RETRIES; attempt += 1) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + OWNER_SESSION_TTL_MS);
+    try {
+      await client.query(
+        `INSERT INTO ${quoteIdentifier(SESSIONS_TABLE)} (token, username, expires_at)
+         VALUES ($1, $2, $3)`,
+        [token, username, expiresAt.toISOString()]
+      );
+      adminSessions.set(token, expiresAt.getTime());
+      return token;
+    } catch (error) {
+      if (error.code !== '23505') throw error;
+    }
   }
-}
-
-function createSessionToken() {
-  cleanupExpiredSessions();
-  const token = crypto.randomBytes(32).toString('hex');
-  adminSessions.set(token, Date.now() + OWNER_SESSION_TTL_MS);
-  return token;
+  throw new Error('Failed to create a unique owner session token.');
 }
 
 function getRequestToken(request) {
@@ -257,22 +403,41 @@ function getRequestToken(request) {
   return '';
 }
 
-function isAuthorizedRequest(request) {
-  cleanupExpiredSessions();
+async function isAuthorizedRequest(request) {
+  await cleanupExpiredSessions();
   const token = getRequestToken(request);
   if (!token) return false;
-  const expiresAt = adminSessions.get(token);
+  let expiresAt = adminSessions.get(token);
+  if (!expiresAt) {
+    const sessionResult = await pool.query(
+      `SELECT expires_at
+       FROM ${quoteIdentifier(SESSIONS_TABLE)}
+       WHERE token = $1`,
+      [token]
+    );
+    if (!sessionResult.rowCount) return false;
+    expiresAt = new Date(sessionResult.rows[0].expires_at).getTime();
+    adminSessions.set(token, expiresAt);
+  }
   if (!expiresAt) return false;
   if (expiresAt <= Date.now()) {
     adminSessions.delete(token);
+    await pool.query(`DELETE FROM ${quoteIdentifier(SESSIONS_TABLE)} WHERE token = $1`, [token]);
     return false;
   }
-  adminSessions.set(token, Date.now() + OWNER_SESSION_TTL_MS);
+  const nextExpiresAt = new Date(Date.now() + OWNER_SESSION_TTL_MS);
+  adminSessions.set(token, nextExpiresAt.getTime());
+  await pool.query(
+    `UPDATE ${quoteIdentifier(SESSIONS_TABLE)}
+     SET expires_at = $2
+     WHERE token = $1`,
+    [token, nextExpiresAt.toISOString()]
+  );
   return true;
 }
 
-function requireAdmin(request, response) {
-  if (isAuthorizedRequest(request)) return true;
+async function requireAdmin(request, response) {
+  if (await isAuthorizedRequest(request)) return true;
   sendJson(response, 401, { error: 'يلزم تسجيل دخول المالك أولاً' });
   return false;
 }
@@ -283,21 +448,32 @@ async function handleBootstrap(response, collectionNames = PUBLIC_COLLECTION_NAM
 }
 
 async function handleCollectionSave(request, response, pathname) {
-  if (!requireAdmin(request, response)) return;
+  if (!await requireAdmin(request, response)) return;
   const collectionName = decodeURIComponent(pathname.replace('/api/collections/', ''));
   if (!COLLECTION_NAMES.has(collectionName)) {
     return sendJson(response, 404, { error: 'Unknown collection.' });
   }
 
   const body = await readJsonBody(request);
-  await replaceCollection(collectionName, body.items || []);
-  const result = await pool.query(
-    `SELECT payload
-     FROM app_collection_items
-     WHERE collection_name = $1
-     ORDER BY position ASC, updated_at ASC`,
-    [collectionName]
-  );
+  const client = await pool.connect();
+  let result;
+  try {
+    await client.query('BEGIN');
+    await replaceCollection(collectionName, body.items || [], client);
+    result = await client.query(
+      `SELECT payload
+       FROM app_collection_items
+       WHERE collection_name = $1
+       ORDER BY position ASC, updated_at ASC`,
+      [collectionName]
+    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw new Error(`Failed to save collection "${collectionName}": ${error.message}`);
+  } finally {
+    client.release();
+  }
 
   sendJson(response, 200, {
     ok: true,
@@ -315,11 +491,11 @@ async function handleOwnerLogin(request, response) {
     return sendJson(response, 401, { error: 'بيانات الدخول غير صحيحة' });
   }
 
-  sendJson(response, 200, { ok: true, username: credentials.username, token: createSessionToken() });
+  sendJson(response, 200, { ok: true, username: credentials.username, token: await createSessionToken(credentials.username) });
 }
 
 async function handleOwnerPasswordChange(request, response) {
-  if (!requireAdmin(request, response)) return;
+  if (!await requireAdmin(request, response)) return;
   const body = await readJsonBody(request);
   const credentials = await getOwnerCredentials();
   if (typeof body?.oldPassword !== 'string' || !body.oldPassword.trim()) {
@@ -379,7 +555,7 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === 'GET' && pathname === '/api/admin/bootstrap') {
-    if (!requireAdmin(request, response)) return;
+    if (!await requireAdmin(request, response)) return;
     return handleBootstrap(response, ADMIN_COLLECTION_NAMES);
   }
 
