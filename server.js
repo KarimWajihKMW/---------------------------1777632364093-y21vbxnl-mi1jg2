@@ -18,7 +18,7 @@ const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'cou
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
-const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD || ownerSeed.password;
+const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD || crypto.randomBytes(18).toString('base64url');
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -178,6 +178,9 @@ async function ensureDatabase() {
     if (!existingOwner.rowCount) {
       const passwordHash = await hashPassword(INITIAL_OWNER_PASSWORD);
       await setOwnerCredentials({ username: ownerSeed.username, ...passwordHash }, client);
+      if (!process.env.OWNER_INITIAL_PASSWORD) {
+        console.warn(`Generated initial owner password: ${INITIAL_OWNER_PASSWORD}`);
+      }
     }
     await client.query('COMMIT');
   } catch (error) {
@@ -264,10 +267,7 @@ function requireAdmin(request, response) {
 
 async function handleBootstrap(response, collectionNames = PUBLIC_COLLECTION_NAMES) {
   const collections = await loadCollections(collectionNames);
-  sendJson(response, 200, {
-    collections,
-    owner: { username: ownerSeed.username }
-  });
+  sendJson(response, 200, { collections });
 }
 
 async function handleCollectionSave(request, response, pathname) {

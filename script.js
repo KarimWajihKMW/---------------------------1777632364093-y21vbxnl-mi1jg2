@@ -13,8 +13,6 @@ const PAGE_SIZE = 4;
 const DEBOUNCE_MS = 140;
 const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
 const OWNER_TOKEN_KEY = 'adrek-owner-token';
-const OWNER_PASSWORD_KEY = 'adrek-owner-password';
-const OWNER_DEFAULT_PASSWORD = '12345678';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
 
@@ -644,8 +642,6 @@ window.showToast = showToast;
 window.adminCollections = adminCollections;
 window.ADMIN_STATUS_OPTIONS = ADMIN_STATUS_OPTIONS;
 window.OWNER_AUTH_KEY = OWNER_AUTH_KEY;
-window.OWNER_PASSWORD_KEY = OWNER_PASSWORD_KEY;
-window.OWNER_DEFAULT_PASSWORD = OWNER_DEFAULT_PASSWORD;
 window.OWNER_USERNAME = OWNER_USERNAME;
 
 window.addEventListener('popstate', () => { state.route = getCurrentRoute(); render(); });

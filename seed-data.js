@@ -80,8 +80,7 @@ const seedCollections = {
 };
 
 const ownerSeed = {
-  username: 'admin',
-  password: 'ChangeMe-2026!'
+  username: 'admin'
 };
 
 module.exports = {
