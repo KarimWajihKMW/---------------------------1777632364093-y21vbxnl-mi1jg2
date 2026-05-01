@@ -8,7 +8,12 @@
 }
 
 html { scroll-behavior: smooth; }
-body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
+body {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+img, svg { max-width: 100%; }
 
 .leaf-grid {
   background-image:
@@ -48,7 +53,11 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
 .footer-link { border-radius: .75rem; padding: .35rem .5rem; transition: .25s ease; }
 .footer-link:hover { color: var(--moss); background: rgba(255,255,255,.55); transform: translateX(-4px); }
 
-.reveal { animation: revealUp .75s cubic-bezier(.2,.8,.2,1) both; }
+.reveal {
+  animation: revealUp .75s cubic-bezier(.2,.8,.2,1) both;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 320px;
+}
 .reveal-delay-1 { animation-delay: .08s; }
 .reveal-delay-2 { animation-delay: .16s; }
 .reveal-delay-3 { animation-delay: .24s; }
@@ -62,6 +71,7 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
   0%,100% { transform: translate3d(0,0,0) scale(1); }
   50% { transform: translate3d(22px,-18px,0) scale(1.06); }
 }
+.float-orb, .float-orb-delayed { will-change: transform; }
 .float-orb { animation: floatOrb 9s ease-in-out infinite; }
 .float-orb-delayed { animation: floatOrb 12s ease-in-out infinite reverse; }
 
@@ -91,7 +101,11 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
   50% { transform: scale(1.05); opacity: .9; }
 }
 
-.card-hover { transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease, background .35s ease; }
+.card-hover {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 260px;
+  transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease, background .35s ease;
+}
 .card-hover:hover { transform: translateY(-8px); box-shadow: 0 28px 70px rgba(49, 92, 69, .16); border-color: rgba(138, 170, 121, .48); }
 
 .soft-button { transition: transform .25s ease, box-shadow .25s ease, background .25s ease; }
@@ -111,8 +125,9 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
   background-repeat: repeat-y;
 }
 
-.table-action { transition: .22s ease; }
-.table-action:hover { transform: translateY(-2px); }
+input, select, textarea, button { font: inherit; }
+.table-action { transition: transform .22s ease, box-shadow .22s ease; }
+.table-action:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(49, 92, 69, .12); }
 
 .modal-backdrop { background: rgba(23, 35, 29, .42); backdrop-filter: blur(10px); }
 
