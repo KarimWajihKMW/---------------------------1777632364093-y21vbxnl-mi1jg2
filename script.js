@@ -143,6 +143,49 @@ const OWNER_PASSWORD_KEY = 'adrek-owner-password';
 const OWNER_DEFAULT_PASSWORD = '12345678';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
+
+const createSafeStorage = (storageName) => {
+  const memoryStore = new Map();
+  let storage = null;
+
+  try {
+    storage = window[storageName];
+    const testKey = '__adrek_storage_test__';
+    storage.setItem(testKey, '1');
+    storage.removeItem(testKey);
+  } catch (error) {
+    storage = null;
+  }
+
+  return {
+    getItem(key) {
+      if (storage) {
+        try { return storage.getItem(key); } catch (error) { storage = null; }
+      }
+      return memoryStore.has(key) ? memoryStore.get(key) : null;
+    },
+    setItem(key, value) {
+      const stringValue = String(value);
+      if (storage) {
+        try { storage.setItem(key, stringValue); return; } catch (error) { storage = null; }
+      }
+      memoryStore.set(key, stringValue);
+    },
+    removeItem(key) {
+      if (storage) {
+        try { storage.removeItem(key); return; } catch (error) { storage = null; }
+      }
+      memoryStore.delete(key);
+    }
+  };
+};
+
+const adrekStorage = {
+  local: createSafeStorage('localStorage'),
+  session: createSafeStorage('sessionStorage')
+};
+
+window.adrekStorage = adrekStorage;
 const adminCollections = {
   programs: { label: 'المنتجات الرقمية', route: '/programs', items: programs, fields: ['title', 'category', 'type', 'duration', 'level', 'price', 'icon', 'status', 'outcome'] },
   children: { label: 'برامج الأطفال', route: '/children-programs', items: childrenPrograms, fields: ['title', 'category', 'age', 'format', 'duration', 'level', 'price', 'icon', 'status', 'outcome'] },
@@ -153,7 +196,7 @@ const adminCollections = {
 };
 
 Object.entries(adminCollections).forEach(([key, config]) => {
-  const saved = localStorage.getItem(`adrek-admin-${key}`);
+  const saved = adrekStorage.local.getItem(`adrek-admin-${key}`);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -165,7 +208,7 @@ Object.entries(adminCollections).forEach(([key, config]) => {
 });
 
 function saveAdminCollection(key) {
-  localStorage.setItem(`adrek-admin-${key}`, JSON.stringify(adminCollections[key].items));
+  adrekStorage.local.setItem(`adrek-admin-${key}`, JSON.stringify(adminCollections[key].items));
 }
 
 const app = document.getElementById('app');
