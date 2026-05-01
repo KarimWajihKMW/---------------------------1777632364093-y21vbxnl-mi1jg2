@@ -18,7 +18,8 @@ const PUBLIC_COLLECTION_NAMES = new Set(['coaches', 'programs', 'children', 'cou
 const ADMIN_COLLECTION_NAMES = new Set([...COLLECTION_NAMES].filter((name) => !PUBLIC_COLLECTION_NAMES.has(name)));
 const BODY_LIMIT_BYTES = Number(process.env.MAX_REQUEST_BODY_BYTES) || 1024 * 1024;
 const OWNER_SESSION_TTL_MS = Number(process.env.OWNER_SESSION_TTL_MS) || 12 * 60 * 60 * 1000;
-const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || null;
+const DEFAULT_OWNER_PASSWORD = '12345678';
+const INITIAL_OWNER_PASSWORD = process.env.OWNER_INITIAL_PASSWORD?.trim() || DEFAULT_OWNER_PASSWORD;
 const STATIC_FILES = new Map([
   ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
   ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
