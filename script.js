@@ -20,6 +20,8 @@ const PAYMENT_STORAGE_KEY = 'adrek-booking-payments';
 const BOOKING_NOTIFICATIONS_KEY = 'adrek-booking-whatsapp-notifications';
 const PAYMENT_CONFIRM_WINDOW_HOURS = 2;
 const OWNER_WHATSAPP_NUMBER = '+966562777284';
+const SUPPORT_EMAIL = 'care@adrek.example';
+const PUBLIC_SUPPORT_STORAGE_KEY = 'adrek-public-contact-requests';
 const BOOKING_OWNER_CONFIRM_STATUS = 'بانتظار اعتماد المالك';
 const BOOKING_READY_FOR_PAYMENT_STATUS = 'مؤكد من المالك بانتظار الدفع';
 const BOOKING_ALTERNATIVE_STATUS = 'وقت بديل مقترح';
@@ -355,6 +357,53 @@ function showToast(message) {
   }, 2400);
 }
 
+function normalizeWhatsAppNumber(value = OWNER_WHATSAPP_NUMBER) {
+  const digits = String(value).replace(/\D/g, '');
+  if (!digits) return OWNER_WHATSAPP_NUMBER.replace(/\D/g, '');
+  if (digits.startsWith('00')) return digits.slice(2);
+  if (digits.startsWith('0') && digits.length === 10) return `966${digits.slice(1)}`;
+  return digits;
+}
+
+function whatsappUrl(phone = OWNER_WHATSAPP_NUMBER, message = '') {
+  const number = normalizeWhatsAppNumber(phone);
+  const text = encodeURIComponent(message || 'مرحباً Adrek، أحتاج إلى المساعدة.');
+  return `https://wa.me/${number}?text=${text}`;
+}
+
+function openWhatsApp(phone = OWNER_WHATSAPP_NUMBER, message = '') {
+  window.open(whatsappUrl(phone, message), '_blank', 'noopener');
+}
+
+function getPublicSupportRequests() {
+  try { const value = JSON.parse(adrekStorage.local.getItem(PUBLIC_SUPPORT_STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch (error) { return []; }
+}
+function savePublicSupportRequests(items) { adrekStorage.local.setItem(PUBLIC_SUPPORT_STORAGE_KEY, JSON.stringify(items.slice(0, 50))); }
+function submitPublicSupport(form) {
+  const formData = new FormData(form);
+  const request = {
+    id: `CT-${Date.now().toString().slice(-6)}`,
+    name: String(formData.get('name') || '').trim(),
+    phone: String(formData.get('phone') || '').trim(),
+    email: String(formData.get('email') || '').trim(),
+    topic: String(formData.get('topic') || 'استفسار عام').trim(),
+    message: String(formData.get('message') || '').trim(),
+    status: 'جديد',
+    createdAt: new Date().toISOString()
+  };
+  if (!request.name || !request.phone || !request.message) return showToast('اكتب الاسم ورقم الجوال ونص الرسالة.');
+  savePublicSupportRequests([request, ...getPublicSupportRequests()]);
+  const whatsappMessage = `طلب تواصل جديد ${request.id}\nالاسم: ${request.name}\nالجوال: ${request.phone}\nالبريد: ${request.email || '-'}\nالموضوع: ${request.topic}\nالرسالة: ${request.message}`;
+  showToast('تم تجهيز الطلب وفتح واتساب لإرساله للدعم');
+  form.reset();
+  openWhatsApp(OWNER_WHATSAPP_NUMBER, whatsappMessage);
+}
+
+function notificationCard(message, compact = false) {
+  const link = whatsappUrl(message.recipient, message.message);
+  return `<div class="rounded-2xl bg-mint/55 p-3 text-sm leading-7"><b>${escapeHTML(message.bookingId || message.channel)} · ${escapeHTML(message.status)}</b><p>${escapeHTML(message.message)}</p><a class="whatsapp-action mt-2 inline-flex rounded-xl px-3 py-2 text-xs font-extrabold" href="${link}" target="_blank" rel="noopener">فتح واتساب</a></div>`;
+}
+
 function shell(title, subtitle, body, eyebrow = 'Adrek') {
   return `
     <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -394,13 +443,16 @@ function homePage() {
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-moss/10 bg-white/70 px-4 py-2 text-sm font-extrabold text-moss shadow-sm"><span class="h-2 w-2 rounded-full bg-sage"></span> منصة واحدة للمستفيد ومزود الخدمة</span>
         <h1 class="font-display text-4xl font-extrabold leading-[1.25] text-moss sm:text-6xl">جلسات كوتشينج .دعم نفسي وأسري . تطوير مهني وقيادي. برامج نمائية وسلوكية للأطفال والمراهقين .</h1>
         <p class="mt-6 max-w-2xl text-lg leading-9 text-ink/70">في Adrek نربطك بالمختص المناسب، ونساعدك على تحديد مسارك التطويري عبر مقاييس شخصية ونفسية، وتقارير احترافية، وبرامج تدريبية، لتفهم ذاتك وتبدأ خطوتك القادمة بثقة ووضوح.</p>
-        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <div class="hero-cta-stack mt-8 flex flex-col gap-3 sm:flex-row">
+          <a data-route="/discover" href="/discover" class="discovery-cta soft-button rounded-2xl px-7 py-4 text-center font-extrabold shadow-leaf">اكتشف نفسك أولاً</a>
           <a data-route="/booking" href="/booking" class="soft-button rounded-2xl bg-moss px-7 py-4 text-center font-extrabold text-white shadow-leaf">ابدأ الحجز الآن</a>
-          <a data-route="/discover" href="/discover" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">اكتشف نفسك أولاً (اختياري)</a>
-          <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
+          <a data-route="/contact" href="/contact" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">تواصل أو ادفع بأمان</a>
         </div>
         <div class="mt-10 grid grid-cols-3 gap-3 text-center sm:max-w-xl">
           ${stat('16K+', 'مستفيد')}${stat('320+', 'مختص معتمد')}${stat('42K+', 'تقرير صادر')}
+        </div>
+        <div class="mt-5 rounded-[1.5rem] border border-white/70 bg-white/65 p-4 text-sm font-bold leading-7 text-ink/65 shadow-sm">
+          ابدأ بتوصية «اكتشف نفسك» إن رغبت، أو انتقل للحجز مباشرة. بعد موافقة المالك يصلك رابط الدفع ورسائل واتساب للتأكيد والمتابعة.
         </div>
       </div>
       <div class="hero-card reveal reveal-delay-2 rounded-[2.5rem] p-5 md:p-7">
@@ -793,15 +845,18 @@ async function processBookingPayment(bookingId) {
         cardholder: state.payment.cardholder,
         last4: cardDigits.slice(-4),
         clientName: booking.clientName,
-        email: booking.email
+        email: booking.email,
+        saveCard: state.payment.saveCard
       })
     });
     const payment = { ...response.payment, bookingId: booking.id, methodLabel: paymentMethod().label, paidAt: response.payment?.paidAt || new Date().toISOString() };
     saveStoredPayments([payment, ...getStoredPayments().filter((item) => String(item.bookingId) !== String(booking.id))]);
     const updated = updateStoredBookingStatus(booking.id, BOOKING_PAID_STATUS, payment) || { ...booking, status: BOOKING_PAID_STATUS, paymentStatus: 'paid', paymentId: payment.transactionId, paidAt: payment.paidAt };
+    addBookingNotification(booking.id, 'client', updated.phone, `تم استلام دفعتك لحجز ${booking.id}. رقم العملية ${payment.transactionId}. موعدك مع ${updated.coachName} بتاريخ ${formatBookingDate(updated.date)} الساعة ${updated.time}.`, 'client-payment-receipt');
+    addBookingNotification(booking.id, 'owner', OWNER_WHATSAPP_NUMBER, `تم دفع الحجز ${booking.id} إلكترونياً. العميل: ${updated.clientName}. المبلغ: ${formatCurrency(payment.amount)}. العملية: ${payment.transactionId}.`, 'owner-payment-receipt');
     state.bookingConfirmation = updated;
     state.payment = { ...DEFAULT_PAYMENT_DRAFT };
-    showToast('تم الدفع الإلكتروني وتثبيت الحجز نهائياً');
+    showToast('تم الدفع الإلكتروني وتثبيت الحجز نهائياً وإصدار إشعار واتساب');
     navigate('/booking/confirmation');
   } catch (error) {
     showToast(error.message || 'تعذر إتمام عملية الدفع.');
@@ -836,8 +891,47 @@ function bookingConfirmationPage() {
   const nextSteps = [isPaid ? 'تم الدفع الإلكتروني وتثبيت الموعد نهائياً.' : item.status === BOOKING_OWNER_CONFIRM_STATUS ? 'تم إرسال طلبك للمالك لتأكيد الموعد أو اقتراح وقت بديل.' : item.status === BOOKING_ALTERNATIVE_STATUS ? 'يمكنك قبول الوقت البديل المقترح ثم الدفع خلال ساعتين.' : `استكمل الدفع قبل انتهاء المهلة: ${deadlineText}.`, item.method === 'video' ? 'سيتم إرسال رابط الجلسة المرئية قبل الموعد.' : 'سيتم تثبيت رقم الاتصال الصوتي الخاص بالجلسة.', 'يمكن تعديل الموعد قبل 12 ساعة من بدايته.', 'سيصل تذكير حسب القناة المختارة.'];
   const alternativePanel = item.status === BOOKING_ALTERNATIVE_STATUS ? `<div class="mt-5 rounded-2xl border border-clay/20 bg-sand/70 p-4"><span class="text-xs font-extrabold text-ink/50">وقت بديل مقترح</span><p class="mt-1 font-bold text-moss">${formatBookingDate(item.alternativeDate)} · ${escapeHTML(item.alternativeTime)}</p><p class="mt-1 text-sm text-ink/60">${escapeHTML(item.alternativeNote || 'قبول المقترح يفتح نافذة دفع مدتها ساعتان.')}</p><button onclick="acceptSuggestedBooking('${escapeHTML(item.id)}')" class="mt-4 w-full rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">قبول الوقت البديل</button></div>` : '';
   const paymentPanel = isPaid ? `<div class="mt-5 rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">حالة الدفع</span><p class="mt-1 font-bold text-moss">مدفوع إلكترونياً · ${escapeHTML(payment?.transactionId || item.paymentId || 'تم السداد')}</p></div>` : item.status === BOOKING_READY_FOR_PAYMENT_STATUS && isPaymentWindowOpen(item) ? `<div class="mt-5 rounded-2xl border border-clay/20 bg-sand/70 p-4"><span class="text-xs font-extrabold text-ink/50">مطلوب للدفع خلال ساعتين من التأكيد</span><p class="mt-1 font-display text-2xl font-extrabold text-moss">${formatCurrency(totals.total)}</p><p class="mt-1 text-sm text-ink/60">المهلة تنتهي: ${deadlineText} · تشمل ضريبة القيمة المضافة 15%</p><button onclick="navigate('/booking/payment/${escapeHTML(item.id)}')" class="mt-4 w-full rounded-2xl bg-moss px-5 py-3 font-extrabold text-white">الدفع الإلكتروني الآن</button></div>` : `<div class="mt-5 rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">حالة الدفع</span><p class="mt-1 font-bold text-moss">${item.status === BOOKING_OWNER_CONFIRM_STATUS ? 'ينتظر تأكيد المالك قبل الدفع' : item.status === BOOKING_ALTERNATIVE_STATUS ? 'ينتظر قبول الوقت البديل' : 'مهلة الدفع غير متاحة حالياً'}</p></div>`;
-  const messagesPanel = `<div class="mt-5 rounded-2xl bg-white/70 p-4"><h3 class="font-display text-xl font-extrabold text-moss">رسائل واتساب للعميل</h3><div class="mt-3 grid gap-2">${clientMessages.length ? clientMessages.map((msg) => `<div class="rounded-2xl bg-mint/55 p-3 text-sm leading-7"><b>${escapeHTML(msg.channel)} · ${escapeHTML(msg.status)}</b><p>${escapeHTML(msg.message)}</p></div>`).join('') : '<p class="text-sm text-ink/60">لا توجد رسائل بعد.</p>'}</div></div>`;
+  const messagesPanel = `<div class="mt-5 rounded-2xl bg-white/70 p-4"><h3 class="font-display text-xl font-extrabold text-moss">رسائل واتساب للعميل</h3><div class="mt-3 grid gap-2">${clientMessages.length ? clientMessages.map((msg) => notificationCard(msg)).join('') : '<p class="text-sm text-ink/60">لا توجد رسائل بعد.</p>'}</div></div>`;
   return shell(item.status === BOOKING_OWNER_CONFIRM_STATUS ? 'تم استلام طلب الحجز' : 'تفاصيل الحجز', 'تتم مراجعة الموعد من المالك أولاً، ثم تصلك رسالة واتساب عند استلام الطلب ورسالة أخرى عند التأكيد لإتمام الدفع خلال ساعتين.', `<div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-calm"><span class="rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-moss">${escapeHTML(isPaid ? BOOKING_PAID_STATUS : item.status)}</span><h2 class="mt-4 font-display text-4xl font-extrabold text-moss">${escapeHTML(item.id)}</h2><div class="mt-6 grid gap-4 md:grid-cols-2">${[['المستفيد', item.clientName], ['المختص', item.coachName], ['نوع الاستشارة', item.sessionType], ['نوع الحجز', item.methodLabel], ['التاريخ', formatBookingDate(item.date)], ['الوقت', item.time], ['التكلفة', `${item.price} ر.س`], ['التذكير', item.reminder]].map(([label, value]) => `<div class="rounded-2xl bg-mint/55 p-4"><span class="text-xs font-extrabold text-ink/50">${label}</span><p class="mt-1 font-bold text-moss">${escapeHTML(value)}</p></div>`).join('')}</div>${alternativePanel}${paymentPanel}${messagesPanel}</div><aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">الخطوات التالية</h3><div class="mt-5 grid gap-3">${nextSteps.map((next, index) => `<div class="rounded-2xl bg-white/10 p-4"><b>${index + 1}.</b> ${next}</div>`).join('')}</div><button onclick="resetBooking()" class="mt-5 w-full rounded-2xl bg-white px-5 py-3 font-extrabold text-moss">حجز موعد آخر</button></aside></div>`, 'مسار عميق /booking/confirmation');
+}
+
+function contactPage(deep = false) {
+  const recentRequests = getPublicSupportRequests().slice(0, 3);
+  const whatsappMessage = 'مرحباً Adrek، أحتاج إلى المساعدة بخصوص الحجز أو الدفع.';
+  return shell(deep ? 'مركز الدعم والتواصل' : 'التواصل والدفع وواتساب', 'قنوات واضحة للتواصل قبل الحجز وبعده، وربط مباشر بواتساب، مع توضيح خطوات الدفع الإلكتروني الآمن بعد اعتماد المالك للموعد.', `
+    <div class="grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
+      <form class="contact-card rounded-[2rem] border border-white/70 p-6 shadow-calm" onsubmit="event.preventDefault(); submitPublicSupport(this)">
+        <h3 class="font-display text-2xl font-extrabold text-moss">أرسل طلب تواصل</h3>
+        <p class="mt-2 leading-8 text-ink/65">يتم تجهيز الرسالة وفتح واتساب لإرسالها مباشرة لفريق الدعم، مع حفظ نسخة محلية للمتابعة.</p>
+        <div class="mt-5 grid gap-3 md:grid-cols-2">
+          <input name="name" required placeholder="الاسم الكامل" class="rounded-2xl border border-moss/10 px-4 py-3">
+          <input name="phone" required inputmode="tel" placeholder="رقم الجوال / واتساب" class="rounded-2xl border border-moss/10 px-4 py-3">
+          <input name="email" type="email" placeholder="البريد الإلكتروني" class="rounded-2xl border border-moss/10 px-4 py-3">
+          <select name="topic" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option>استفسار حجز</option><option>مشكلة دفع</option><option>طلب فاتورة</option><option>دعم تقني</option><option>شراكة أو مزود خدمة</option></select>
+          <textarea name="message" required class="min-h-32 rounded-2xl border border-moss/10 px-4 py-3 md:col-span-2" placeholder="اكتب رسالتك أو رقم الحجز إن وجد"></textarea>
+        </div>
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+          <button class="rounded-2xl bg-moss px-6 py-4 font-extrabold text-white shadow-leaf">إرسال عبر واتساب</button>
+          <a class="rounded-2xl bg-white px-6 py-4 text-center font-extrabold text-moss" href="mailto:${SUPPORT_EMAIL}">إرسال بريد</a>
+        </div>
+      </form>
+      <aside class="rounded-[2rem] bg-moss p-6 text-white shadow-calm">
+        <h3 class="font-display text-2xl font-extrabold">قنوات الخدمة</h3>
+        <div class="mt-5 grid gap-3">
+          <a class="whatsapp-action rounded-2xl px-5 py-4 text-center font-extrabold" href="${whatsappUrl(OWNER_WHATSAPP_NUMBER, whatsappMessage)}" target="_blank" rel="noopener">فتح واتساب مباشر</a>
+          <a class="rounded-2xl bg-white px-5 py-4 text-center font-extrabold text-moss" href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>
+          <div class="rounded-2xl bg-white/10 p-4"><b>رقم واتساب</b><p class="mt-1 text-white/75">${normalizeWhatsAppNumber(OWNER_WHATSAPP_NUMBER)}</p></div>
+          <div class="rounded-2xl bg-white/10 p-4"><b>الدفع</b><p class="mt-1 leading-7 text-white/75">يظهر رابط الدفع بعد اعتماد المالك، ويقبل مدى، فيزا/ماستر كارد، وApple Pay مع إيصال ومعرف عملية.</p></div>
+        </div>
+        <h3 class="mt-7 font-display text-xl font-extrabold">آخر طلباتك</h3>
+        <div class="mt-3 grid gap-2">${recentRequests.length ? recentRequests.map((request) => `<div class="rounded-2xl bg-white/10 p-3 text-sm leading-7"><b>${escapeHTML(request.id)} · ${escapeHTML(request.topic)}</b><p class="text-white/75">${escapeHTML(request.message)}</p></div>`).join('') : '<p class="rounded-2xl bg-white/10 p-3 text-sm text-white/75">لا توجد طلبات محفوظة بعد.</p>'}</div>
+      </aside>
+    </div>
+    <div class="mt-6 grid gap-4 md:grid-cols-3">
+      ${step('01', 'اعتماد الموعد', 'يراجع المالك الحجز ويؤكد الموعد أو يقترح وقتاً بديلاً.')}
+      ${step('02', 'رابط الدفع', 'بعد التأكيد تظهر صفحة الدفع العميقة /booking/payment/:id لمدة ساعتين.')}
+      ${step('03', 'واتساب وإيصال', 'تصل رسائل واتساب للعميل والمالك مع حالة الدفع ومعرف العملية.')}
+    </div>`, deep ? 'مسار عميق /contact/support' : 'مسار /contact');
 }
 
 function loginPage() {
@@ -876,6 +970,8 @@ function render() {
     app.innerHTML = bookingPaymentPage(decodeURIComponent(base.split('/').pop()));
   } else if (base === '/discover/result') {
     app.innerHTML = window.discoveryResultPage ? window.discoveryResultPage() : notFoundPage();
+  } else if (base === '/contact/support') {
+    app.innerHTML = contactPage(true);
   } else if (base.startsWith('/programs/')) {
     app.innerHTML = catalogDetailPage(programs.find((program) => program.id === Number(base.split('/').pop())), '/programs', 'صفحة عميقة للمنتجات الرقمية', 'إضافة للسلة');
   } else if (base.startsWith('/children-programs/')) {
@@ -885,7 +981,7 @@ function render() {
   } else if (base.startsWith('/leadership-programs/')) {
     app.innerHTML = catalogDetailPage(leadershipPrograms.find((program) => program.id === Number(base.split('/').pop())), '/leadership-programs', 'صفحة عميقة للبرامج القيادية', 'طلب عرض');
   } else {
-    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/discover': () => window.discoveryPage ? window.discoveryPage() : notFoundPage(), '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/booking/confirmation': bookingConfirmationPage, '/login': loginPage }[base] || notFoundPage)();
+    app.innerHTML = ({ '/': homePage, '/coaches': coachesPage, '/programs': programsPage, '/children-programs': childrenProgramsPage, '/courses': coursesPage, '/leadership-programs': leadershipProgramsPage, '/assessments': assessmentsPage, '/discover': () => window.discoveryPage ? window.discoveryPage() : notFoundPage(), '/reports': reportsPage, '/join-provider': joinProviderPage, '/dashboard/reports': dashboardReportsPage, '/booking': bookingPage, '/booking/confirmation': bookingConfirmationPage, '/contact': () => contactPage(false), '/login': loginPage }[base] || notFoundPage)();
   }
   bindDynamicControls();
 }
@@ -937,6 +1033,10 @@ window.resetBooking = resetBooking;
 window.updatePaymentField = updatePaymentField;
 window.processBookingPayment = processBookingPayment;
 window.maskCardNumber = maskCardNumber;
+window.whatsappUrl = whatsappUrl;
+window.openWhatsApp = openWhatsApp;
+window.submitPublicSupport = submitPublicSupport;
+window.getPublicSupportRequests = getPublicSupportRequests;
 window.getStoredBookings = getStoredBookings;
 window.saveStoredBookings = saveStoredBookings;
 window.getStoredBookingNotifications = getStoredBookingNotifications;
