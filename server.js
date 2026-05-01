@@ -220,8 +220,8 @@ async function ensureCollectionMirror(collectionName, client = pool) {
     throw new Error(`Unknown collection mirror "${collectionName}".`);
   }
   const tableName = quoteIdentifier(getCollectionTableName(collectionName));
-  const mirrorCountResult = await client.query(`SELECT COUNT(*)::int AS count FROM ${tableName}`);
-  if ((mirrorCountResult.rows[0]?.count || 0) > 0) return;
+  const mirrorPresenceResult = await client.query(`SELECT EXISTS(SELECT 1 FROM ${tableName} LIMIT 1) AS has_rows`);
+  if (mirrorPresenceResult.rows[0]?.has_rows) return;
 
   const sourceResult = await client.query(
     `SELECT payload
@@ -231,7 +231,7 @@ async function ensureCollectionMirror(collectionName, client = pool) {
     [collectionName]
   );
 
-  if (!sourceResult.rowCount) return;
+  if (sourceResult.rowCount === 0) return;
   await syncCollectionTable(
     collectionName,
     normalizeItems(collectionName, sourceResult.rows.map((row) => row.payload)),
