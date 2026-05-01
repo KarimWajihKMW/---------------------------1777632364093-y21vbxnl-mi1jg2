@@ -41,13 +41,26 @@ function resolveConnectionString() {
     .find(Boolean) || '';
 }
 
-function createPoolConfig() {
+function resolveSslConfig() {
   const connectionString = resolveConnectionString();
-  const sslMode = connectionString ? new URL(connectionString).searchParams.get('sslmode') : '';
+  const connectionHost = connectionString ? new URL(connectionString).hostname : '';
+  const sslMode = String(
+    process.env.PGSSLMODE
+    || (connectionString ? new URL(connectionString).searchParams.get('sslmode') : '')
+    || ''
+  ).toLowerCase();
   const sslEnabled = process.env.PGSSL === 'true'
-    || ['require', 'verify-ca', 'verify-full'].includes(String(process.env.PGSSLMODE || sslMode || '').toLowerCase())
-    || (connectionString && !isLocalDatabaseHost(new URL(connectionString).hostname));
-  const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED !== 'false';
+    || ['require', 'verify-ca', 'verify-full'].includes(sslMode)
+    || (connectionHost && !isLocalDatabaseHost(connectionHost))
+    || (process.env.PGHOST && !isLocalDatabaseHost(process.env.PGHOST));
+  const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED
+    ? process.env.PGSSL_REJECT_UNAUTHORIZED === 'true'
+    : ['verify-ca', 'verify-full'].includes(sslMode);
+  return { connectionString, sslEnabled, rejectUnauthorized };
+}
+
+function createPoolConfig() {
+  const { connectionString, sslEnabled, rejectUnauthorized } = resolveSslConfig();
   if (connectionString) {
     return sslEnabled ? { connectionString, ssl: { rejectUnauthorized } } : { connectionString };
   }
@@ -59,7 +72,7 @@ function createPoolConfig() {
       user: process.env.PGUSER,
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
-      ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized } : false
+      ssl: sslEnabled ? { rejectUnauthorized } : false
     };
   }
 
