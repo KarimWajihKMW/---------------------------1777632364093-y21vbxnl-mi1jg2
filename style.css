@@ -19,6 +19,15 @@ body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
   mask-image: linear-gradient(to bottom, black, transparent 85%);
 }
 
+.logo-mark {
+  padding: 0.25rem;
+  border: 1px solid rgba(49, 92, 69, 0.10);
+}
+.logo-mark img {
+  display: block;
+  border-radius: 0.75rem;
+}
+
 .nav-link {
   display: block;
   border-radius: 1rem;
