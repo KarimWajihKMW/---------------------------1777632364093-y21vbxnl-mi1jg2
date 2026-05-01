@@ -1,4 +1,4 @@
-console.log('Akwadra Super Builder Initialized - Adrek Platform');
+'use strict';
 
 const coaches = [
   { id: 1, name: 'د. ريم العبدالله', specialty: 'إرشاد نفسي', city: 'عن بعد', rating: 4.9, price: 220, next: 'اليوم 7:30م', badge: 'جلسات قلق وتوازن', image: 'ر', experience: 11 },
@@ -10,11 +10,11 @@ const coaches = [
 ];
 
 const programs = [
-  { id: 1, title: 'دفتر الهدوء الرقمي', type: 'منتج تدريبي رقمي', duration: '21 يوم', price: 89, level: 'مبتدئ', icon: '🌿' },
-  { id: 2, title: 'برنامج وضوح المسار', type: 'برنامج كوتشينج ذاتي', duration: '4 أسابيع', price: 240, level: 'متوسط', icon: '🧭' },
-  { id: 3, title: 'حقيبة مهارات التواصل الأسري', type: 'حقيبة تدريبية', duration: '10 وحدات', price: 170, level: 'عائلي', icon: '🏡' },
-  { id: 4, title: 'خطة التعافي من الاحتراق', type: 'برنامج صوتي وعملي', duration: '14 يوم', price: 120, level: 'عملي', icon: '✨' },
-  { id: 5, title: 'قوالب جلسات التأمل الموجه', type: 'مكتبة رقمية', duration: '30 ملف', price: 65, level: 'متاح للجميع', icon: '🎧' }
+  { id: 1, title: 'دفتر الهدوء الرقمي', category: 'وعي ذاتي', type: 'منتج تدريبي رقمي', duration: '21 يوم', price: 89, level: 'مبتدئ', icon: '🌿', outcome: 'تمارين يومية قصيرة للتنفس والتدوين واستعادة الهدوء' },
+  { id: 2, title: 'برنامج وضوح المسار', category: 'كوتشينج ذاتي', type: 'برنامج كوتشينج ذاتي', duration: '4 أسابيع', price: 240, level: 'متوسط', icon: '🧭', outcome: 'خارطة أهداف شخصية قابلة للقياس مع مراجعات أسبوعية' },
+  { id: 3, title: 'حقيبة مهارات التواصل الأسري', category: 'أسري', type: 'حقيبة تدريبية', duration: '10 وحدات', price: 170, level: 'عائلي', icon: '🏡', outcome: 'نماذج حوار وحدود صحية وتمارين تطبيقية للأسرة' },
+  { id: 4, title: 'خطة التعافي من الاحتراق', category: 'صحة نفسية', type: 'برنامج صوتي وعملي', duration: '14 يوم', price: 120, level: 'عملي', icon: '✨', outcome: 'خطة عملية لاستعادة الطاقة وتنظيم الجهد والراحة' },
+  { id: 5, title: 'قوالب جلسات التأمل الموجه', category: 'مكتبة رقمية', type: 'مكتبة رقمية', duration: '30 ملف', price: 65, level: 'متاح للجميع', icon: '🎧', outcome: 'ملفات صوتية وقوالب تأمل تساعد على بناء روتين هادئ' }
 ];
 
 const childrenPrograms = [
@@ -58,6 +58,44 @@ const reports = [
   { id: 'WR-1037', client: 'عبدالله ر.', type: 'قيم شخصية', date: '2026-02-05', progress: 76, status: 'مراجعة' }
 ];
 
+const PAGE_SIZE = 4;
+const DEBOUNCE_MS = 140;
+
+const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+const includesTerm = (value = '', term = '') => String(value).toLocaleLowerCase('ar').includes(String(term).toLocaleLowerCase('ar'));
+const parseDurationValue = (duration = '') => Number.parseInt(String(duration).replace(/[^0-9]/g, ''), 10) || 999;
+
+function debounce(callback, wait = DEBOUNCE_MS) {
+  let timer;
+  return (...args) => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => callback(...args), wait);
+  };
+}
+
+function listToolbar({ placeholder, filters, activeFilter, sorts, activeSort }) {
+  return `
+    <div class="reveal grid gap-4 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm backdrop-blur-xl md:grid-cols-4">
+      <label class="sr-only" for="searchInput">بحث</label>
+      <input id="searchInput" value="${escapeHTML(state.search)}" placeholder="${placeholder}" class="rounded-2xl border border-moss/10 bg-white px-4 py-3 transition focus:border-sage md:col-span-2">
+      <label class="sr-only" for="filterSelect">تصفية</label>
+      <select id="filterSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${filters.map(filter => `<option value="${escapeHTML(filter)}" ${filter === activeFilter ? 'selected' : ''}>${escapeHTML(filter)}</option>`).join('')}</select>
+      <label class="sr-only" for="sortSelect">ترتيب</label>
+      <select id="sortSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${sorts.map(sort => `<option value="${sort.value}" ${sort.value === activeSort ? 'selected' : ''}>${sort.label}</option>`).join('')}</select>
+    </div>`;
+}
+
+function getPagedItems(list, perPage = PAGE_SIZE) {
+  const pages = Math.max(1, Math.ceil(list.length / perPage));
+  state.page = Math.min(Math.max(1, state.page), pages);
+  const start = (state.page - 1) * perPage;
+  return { pages, visible: list.slice(start, start + perPage) };
+}
+
+function emptyState(message = 'لا توجد نتائج مطابقة حالياً') {
+  return `<div class="rounded-[2rem] border border-dashed border-moss/20 bg-white/60 p-8 text-center font-bold text-ink/60">${message}</div>`;
+}
+
 const canUseHistoryRouting = window.location.protocol !== 'about:' && window.location.origin !== 'null';
 
 function normalizeRoute(path) {
@@ -82,8 +120,13 @@ const state = {
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
+function getRouteSection(route) {
+  return normalizeRoute(route).split('/')[1] || 'home';
+}
+
 function navigate(path) {
   const nextRoute = normalizeRoute(path);
+  const sectionChanged = getRouteSection(nextRoute) !== getRouteSection(state.route);
   if (getCurrentRoute() !== nextRoute) {
     try {
       if (canUseHistoryRouting) {
@@ -99,6 +142,11 @@ function navigate(path) {
   }
   state.route = nextRoute;
   state.page = 1;
+  if (sectionChanged) {
+    state.filter = 'الكل';
+    state.sort = 'title';
+    state.search = '';
+  }
   render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -187,19 +235,12 @@ function coachesPage() {
   const specialties = ['الكل', ...new Set(coaches.map(c => c.specialty))];
   const activeFilter = specialties.includes(state.filter) ? state.filter : 'الكل';
   const activeSort = ['rating', 'price', 'experience'].includes(state.sort) ? state.sort : 'rating';
-  let list = coaches.filter(c => activeFilter === 'الكل' || c.specialty === activeFilter).filter(c => c.name.includes(state.search) || c.specialty.includes(state.search));
+  let list = coaches.filter(c => activeFilter === 'الكل' || c.specialty === activeFilter).filter(c => includesTerm(c.name, state.search) || includesTerm(c.specialty, state.search) || includesTerm(c.city, state.search));
   list.sort((a,b) => activeSort === 'price' ? a.price - b.price : activeSort === 'experience' ? b.experience - a.experience : b.rating - a.rating);
-  const perPage = 4;
-  const pages = Math.max(1, Math.ceil(list.length / perPage));
-  state.page = Math.min(state.page, pages);
-  const visible = list.slice((state.page - 1) * perPage, state.page * perPage);
+  const { pages, visible } = getPagedItems(list);
   return shell('دليل المستشارين والكوتشز', 'قائمة قابلة للبحث والفرز والتصفية مع صفحات مستقلة وتفاصيل عميقة لكل مزود خدمة.', `
-    <div class="reveal grid gap-4 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm md:grid-cols-4">
-      <input id="searchInput" value="${state.search}" placeholder="ابحث بالاسم أو التخصص" class="rounded-2xl border border-moss/10 bg-white px-4 py-3 transition focus:border-sage md:col-span-2">
-      <select id="filterSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${specialties.map(s => `<option ${s===activeFilter?'selected':''}>${s}</option>`).join('')}</select>
-      <select id="sortSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option value="rating" ${activeSort==='rating'?'selected':''}>الأعلى تقييماً</option><option value="price" ${activeSort==='price'?'selected':''}>الأقل سعراً</option><option value="experience" ${activeSort==='experience'?'selected':''}>الأكثر خبرة</option></select>
-    </div>
-    <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.map(coachCard).join('')}</div>
+    ${listToolbar({ placeholder: 'ابحث بالاسم أو التخصص أو المدينة', filters: specialties, activeFilter, activeSort, sorts: [{ value: 'rating', label: 'الأعلى تقييماً' }, { value: 'price', label: 'الأقل سعراً' }, { value: 'experience', label: 'الأكثر خبرة' }] })}
+    <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.length ? visible.map(coachCard).join('') : emptyState()}</div>
     ${pagination(pages)}
   `, 'حجز الأطباء بصيغة الكوتشينج');
 }
@@ -214,13 +255,36 @@ function coachCard(c) {
 }
 
 function pagination(pages) {
-  return `<div class="mt-8 flex items-center justify-center gap-2">${Array.from({length: pages}, (_, i) => `<button onclick="setPage(${i+1})" class="h-11 w-11 rounded-2xl font-extrabold transition ${state.page===i+1?'bg-moss text-white shadow-leaf':'bg-white/75 text-moss hover:-translate-y-1'}">${i+1}</button>`).join('')}</div>`;
+  if (pages <= 1) return '';
+  const pageButtons = Array.from({length: pages}, (_, i) => `<button type="button" onclick="setPage(${i+1})" aria-label="الصفحة ${i+1}" class="h-11 w-11 rounded-2xl font-extrabold transition ${state.page===i+1?'bg-moss text-white shadow-leaf':'bg-white/75 text-moss hover:-translate-y-1'}">${i+1}</button>`).join('');
+  return `<div class="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="ترقيم الصفحات"><button type="button" onclick="setPage(${Math.max(1, state.page - 1)})" class="rounded-2xl bg-white/75 px-4 py-3 font-extrabold text-moss transition hover:-translate-y-1">السابق</button>${pageButtons}<button type="button" onclick="setPage(${Math.min(pages, state.page + 1)})" class="rounded-2xl bg-white/75 px-4 py-3 font-extrabold text-moss transition hover:-translate-y-1">التالي</button></div>`;
 }
 
 function programsPage() {
+  const categories = ['الكل', ...new Set(programs.map(program => program.category))];
+  const activeFilter = categories.includes(state.filter) ? state.filter : 'الكل';
+  const activeSort = ['title', 'price', 'duration'].includes(state.sort) ? state.sort : 'title';
+  let list = programs
+    .filter(program => activeFilter === 'الكل' || program.category === activeFilter)
+    .filter(program => [program.title, program.type, program.category, program.level].some(value => includesTerm(value, state.search)));
+  list.sort((a, b) => activeSort === 'price' ? a.price - b.price : activeSort === 'duration' ? parseDurationValue(a.duration) - parseDurationValue(b.duration) : a.title.localeCompare(b.title, 'ar'));
+  const { pages, visible } = getPagedItems(list);
   return shell('المنتجات الرقمية التدريبية', 'مكتبة برامج وحقائب رقمية بأيقونة واضحة ومسارات قابلة للشراء أو الإهداء أو الإضافة لخطة المستفيد.', `
-    <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">${programs.map(p => `<article class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm"><span class="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-mint text-3xl">${p.icon}</span><p class="text-xs font-extrabold text-clay">${p.type}</p><h3 class="mt-2 font-display text-xl font-extrabold text-moss">${p.title}</h3><div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-3 py-1">${p.duration}</span><span class="rounded-full bg-sand/70 px-3 py-1">${p.level}</span></div><div class="mt-6 flex items-center justify-between"><b class="text-moss">${p.price} ر.س</b><button onclick="showToast('تمت إضافة ${p.title} إلى السلة')" class="rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white transition hover:-translate-y-1">إضافة</button></div></article>`).join('')}</div>
+    ${listToolbar({ placeholder: 'ابحث باسم المنتج أو نوعه', filters: categories, activeFilter, activeSort, sorts: [{ value: 'title', label: 'ترتيب أبجدي' }, { value: 'price', label: 'الأقل سعراً' }, { value: 'duration', label: 'الأقصر مدة' }] })}
+    <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">${visible.length ? visible.map(programCard).join('') : emptyState()}</div>
+    ${pagination(pages)}
   `, 'أيقونة المنتجات الرقمية');
+}
+
+function programCard(p) {
+  return `<article class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur-xl">
+    <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-mint text-3xl">${p.icon}</span>
+    <p class="text-xs font-extrabold text-clay">${p.type}</p>
+    <h3 class="mt-2 font-display text-xl font-extrabold text-moss">${p.title}</h3>
+    <p class="mt-3 leading-7 text-ink/62">${p.outcome}</p>
+    <div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-3 py-1">${p.duration}</span><span class="rounded-full bg-sand/70 px-3 py-1">${p.level}</span><span class="rounded-full bg-sand/70 px-3 py-1">${p.category}</span></div>
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-moss/10 pt-4"><b class="text-moss">${p.price} ر.س</b><div class="flex flex-wrap gap-2"><button onclick="navigate('/programs/${p.id}')" class="table-action rounded-2xl bg-mint px-4 py-2 text-sm font-extrabold text-moss">عرض</button><button onclick="showToast('تمت إضافة ${p.title} إلى السلة')" class="table-action rounded-2xl bg-moss px-4 py-2 text-sm font-extrabold text-white">إضافة</button><button onclick="showToast('تم فتح تعديل المنتج')" class="table-action rounded-2xl bg-sand px-4 py-2 text-sm font-extrabold text-moss">تعديل</button><button onclick="showToast('تم حذف المنتج من القائمة')" class="table-action rounded-2xl bg-red-50 px-4 py-2 text-sm font-extrabold text-red-700">حذف</button></div></div>
+  </article>`;
 }
 
 function catalogPage(config) {
@@ -229,19 +293,12 @@ function catalogPage(config) {
   const activeSort = ['title', 'price', 'duration'].includes(state.sort) ? state.sort : 'title';
   let list = config.items
     .filter(item => activeFilter === 'الكل' || item.category === activeFilter)
-    .filter(item => [item.title, item.category, item.level, item.format, item.audience, item.age].filter(Boolean).some(value => value.includes(state.search)));
-  list.sort((a, b) => activeSort === 'price' ? a.price - b.price : activeSort === 'duration' ? parseInt(a.duration) - parseInt(b.duration) : a.title.localeCompare(b.title, 'ar'));
-  const perPage = 4;
-  const pages = Math.max(1, Math.ceil(list.length / perPage));
-  state.page = Math.min(state.page, pages);
-  const visible = list.slice((state.page - 1) * perPage, state.page * perPage);
+    .filter(item => [item.title, item.category, item.level, item.format, item.audience, item.age].filter(Boolean).some(value => includesTerm(value, state.search)));
+  list.sort((a, b) => activeSort === 'price' ? a.price - b.price : activeSort === 'duration' ? parseDurationValue(a.duration) - parseDurationValue(b.duration) : a.title.localeCompare(b.title, 'ar'));
+  const { pages, visible } = getPagedItems(list);
   return shell(config.title, config.subtitle, `
-    <div class="reveal grid gap-4 rounded-[2rem] border border-white/70 bg-white/65 p-4 shadow-sm md:grid-cols-4">
-      <input id="searchInput" value="${state.search}" placeholder="ابحث باسم البرنامج أو الفئة" class="rounded-2xl border border-moss/10 bg-white px-4 py-3 transition focus:border-sage md:col-span-2">
-      <select id="filterSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3">${categories.map(s => `<option ${s===activeFilter?'selected':''}>${s}</option>`).join('')}</select>
-      <select id="sortSelect" class="rounded-2xl border border-moss/10 bg-white px-4 py-3"><option value="title" ${activeSort==='title'?'selected':''}>ترتيب أبجدي</option><option value="price" ${activeSort==='price'?'selected':''}>الأقل تكلفة</option><option value="duration" ${activeSort==='duration'?'selected':''}>الأقصر مدة</option></select>
-    </div>
-    <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.map(item => catalogCard(item, config.route, config.actionLabel)).join('')}</div>
+    ${listToolbar({ placeholder: 'ابحث باسم البرنامج أو الفئة', filters: categories, activeFilter, activeSort, sorts: [{ value: 'title', label: 'ترتيب أبجدي' }, { value: 'price', label: 'الأقل تكلفة' }, { value: 'duration', label: 'الأقصر مدة' }] })}
+    <div class="mt-6 grid gap-5 md:grid-cols-2">${visible.length ? visible.map(item => catalogCard(item, config.route, config.actionLabel)).join('') : emptyState()}</div>
     ${pagination(pages)}
   `, config.eyebrow);
 }
@@ -259,20 +316,36 @@ function coursesPage() { return catalogPage({ route: '/courses', items: courses,
 function leadershipProgramsPage() { return catalogPage({ route: '/leadership-programs', items: leadershipPrograms, title: 'البرامج القيادية للجهات والمنظمات', subtitle: 'حلول تطوير قيادي وتشخيص ثقافة وبناء فرق مصممة للجهات والمنظمات مع مخرجات تنفيذية قابلة للقياس.', eyebrow: 'حلول مؤسسية', actionLabel: 'طلب عرض' }); }
 
 function catalogDetailPage(item, route, eyebrow, ctaLabel) {
+  const format = item.format || item.type || 'مسار رقمي';
+  const audience = item.audience || item.age || item.level;
   return shell(item.title, `${item.category} · ${item.duration} · ${item.level}`, `
     <div class="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
-      <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><span class="mb-4 flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-mint text-4xl">${item.icon}</span><h3 class="font-display text-2xl font-extrabold text-moss">مخرجات البرنامج</h3><p class="mt-4 leading-9 text-ink/65">${item.outcome}. يتضمن المسار جلسة تعريفية، مواد تطبيقية، ومتابعة تقدم لضمان انتقال الأثر إلى الحياة اليومية أو بيئة العمل.</p><div class="mt-6 flex flex-wrap gap-2 text-sm font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-4 py-2">${item.format}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.audience || item.age}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.price.toLocaleString('ar-SA')} ر.س</span></div></div>
+      <div class="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-calm"><span class="mb-4 flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-mint text-4xl">${item.icon}</span><h3 class="font-display text-2xl font-extrabold text-moss">مخرجات البرنامج</h3><p class="mt-4 leading-9 text-ink/65">${item.outcome}. يتضمن المسار جلسة تعريفية، مواد تطبيقية، ومتابعة تقدم لضمان انتقال الأثر إلى الحياة اليومية أو بيئة العمل.</p><div class="mt-6 flex flex-wrap gap-2 text-sm font-bold text-ink/60"><span class="rounded-full bg-sand/70 px-4 py-2">${format}</span><span class="rounded-full bg-sand/70 px-4 py-2">${audience}</span><span class="rounded-full bg-sand/70 px-4 py-2">${item.price.toLocaleString('ar-SA')} ر.س</span></div></div>
       <div class="rounded-[2rem] bg-moss p-6 text-white shadow-calm"><h3 class="font-display text-2xl font-extrabold">إجراءات البرنامج</h3><div class="mt-5 grid gap-3"><button onclick="showToast('${ctaLabel}: ${item.title}')" class="rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">${ctaLabel}</button><button onclick="showToast('تم فتح نموذج تعديل البرنامج')" class="rounded-2xl bg-white/10 px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">تعديل</button><button onclick="showToast('تم نسخ رابط الصفحة')" class="rounded-2xl bg-white/10 px-5 py-3 font-extrabold text-white transition hover:-translate-y-1">نسخ الرابط</button><button onclick="showToast('تم أرشفة البرنامج')" class="rounded-2xl bg-red-50 px-5 py-3 font-extrabold text-red-700 transition hover:-translate-y-1">حذف</button></div><a href="${route}" data-route="${route}" class="mt-6 inline-flex rounded-2xl border border-white/20 px-5 py-3 font-extrabold text-white">العودة للقائمة</a></div>
     </div>
   `, eyebrow);
 }
 
 function assessmentsPage() {
+  const categories = ['الكل', ...new Set(assessments.map(assessment => assessment.category))];
+  const activeFilter = categories.includes(state.filter) ? state.filter : 'الكل';
+  const activeSort = ['name', 'questions', 'accuracy'].includes(state.sort) ? state.sort : 'name';
+  let list = assessments
+    .filter(assessment => activeFilter === 'الكل' || assessment.category === activeFilter)
+    .filter(assessment => [assessment.name, assessment.category, assessment.report].some(value => includesTerm(value, state.search)));
+  list.sort((a, b) => activeSort === 'questions' ? b.questions - a.questions : activeSort === 'accuracy' ? Number.parseFloat(b.accuracy) - Number.parseFloat(a.accuracy) : a.name.localeCompare(b.name, 'ar'));
+  const { pages, visible } = getPagedItems(list);
   return shell('برامج المقاييس الشخصية والنفسية', 'مقاييس منظمة للمستفيدين ومزودي الخدمة، مع تصنيف واضح وتقرير مهني قابل للإصدار بعد الإكمال.', `
-    <div class="overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm">
-      <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-right"><thead class="bg-mint/70 text-sm text-moss"><tr><th class="p-4">المقياس</th><th class="p-4">الفئة</th><th class="p-4">الأسئلة</th><th class="p-4">دقة معيارية</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${assessments.map(a => `<tr class="border-t border-moss/10"><td class="p-4 font-bold text-moss">${a.name}<p class="text-sm font-normal text-ink/55">${a.report}</p></td><td class="p-4">${a.category}</td><td class="p-4">${a.questions}</td><td class="p-4">${a.accuracy}</td><td class="p-4"><div class="flex gap-2"><button onclick="showToast('بدء ${a.name}')" class="table-action rounded-xl bg-moss px-3 py-2 text-xs font-bold text-white">بدء</button><button onclick="showToast('تم فتح تحرير المقياس')" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">تعديل</button><button onclick="showToast('تم نسخ رابط المقياس')" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">نسخ</button><button onclick="showToast('تم أرشفة المقياس')" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`).join('')}</tbody></table></div>
+    ${listToolbar({ placeholder: 'ابحث باسم المقياس أو التقرير', filters: categories, activeFilter, activeSort, sorts: [{ value: 'name', label: 'ترتيب أبجدي' }, { value: 'questions', label: 'الأكثر أسئلة' }, { value: 'accuracy', label: 'الأعلى دقة' }] })}
+    <div class="mt-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm">
+      <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-right"><thead class="bg-mint/70 text-sm text-moss"><tr><th class="p-4">المقياس</th><th class="p-4">الفئة</th><th class="p-4">الأسئلة</th><th class="p-4">دقة معيارية</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${visible.map(assessmentRow).join('')}</tbody></table>${visible.length ? '' : emptyState()}</div>
     </div>
+    ${pagination(pages)}
   `, 'مقاييس بتقارير احترافية');
+}
+
+function assessmentRow(a) {
+  return `<tr class="border-t border-moss/10"><td class="p-4 font-bold text-moss">${a.name}<p class="text-sm font-normal text-ink/55">${a.report}</p></td><td class="p-4">${a.category}</td><td class="p-4">${a.questions}</td><td class="p-4">${a.accuracy}</td><td class="p-4"><div class="flex gap-2"><button onclick="showToast('بدء ${a.name}')" class="table-action rounded-xl bg-moss px-3 py-2 text-xs font-bold text-white">بدء</button><button onclick="showToast('تم فتح تحرير المقياس')" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">تعديل</button><button onclick="showToast('تم نسخ رابط المقياس')" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">نسخ</button><button onclick="showToast('تم أرشفة المقياس')" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`;
 }
 
 function reportsPage() {
@@ -291,9 +364,23 @@ function joinProviderPage() {
 }
 
 function dashboardReportsPage() {
+  const statuses = ['الكل', ...new Set(reports.map(report => report.status))];
+  const activeFilter = statuses.includes(state.filter) ? state.filter : 'الكل';
+  const activeSort = ['date', 'progress', 'client'].includes(state.sort) ? state.sort : 'date';
+  let list = reports
+    .filter(report => activeFilter === 'الكل' || report.status === activeFilter)
+    .filter(report => [report.id, report.client, report.type, report.status].some(value => includesTerm(value, state.search)));
+  list.sort((a, b) => activeSort === 'progress' ? b.progress - a.progress : activeSort === 'client' ? a.client.localeCompare(b.client, 'ar') : new Date(b.date) - new Date(a.date));
+  const { pages, visible } = getPagedItems(list);
   return shell('لوحة التقارير وإدارة المحتوى', 'جدول تقارير يحتوي على إجراءات عرض وتعديل وإصدار وحذف، مع متابعة حالة التقرير وتقدم المستفيد.', `
-    <div class="overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm"><div class="overflow-x-auto"><table class="w-full min-w-[760px] text-right"><thead class="bg-moss text-sm text-white"><tr><th class="p-4">رقم التقرير</th><th class="p-4">المستفيد</th><th class="p-4">النوع</th><th class="p-4">التاريخ</th><th class="p-4">التقدم</th><th class="p-4">الحالة</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${reports.map(r => `<tr class="border-t border-moss/10"><td class="p-4 font-bold text-moss">${r.id}</td><td class="p-4">${r.client}</td><td class="p-4">${r.type}</td><td class="p-4">${r.date}</td><td class="p-4"><div class="h-2 w-28 rounded-full bg-mint"><div class="progress-wave h-2 rounded-full" style="width:${r.progress}%"></div></div></td><td class="p-4"><span class="rounded-full bg-sand/70 px-3 py-1 text-xs font-bold text-moss">${r.status}</span></td><td class="p-4"><div class="flex gap-2"><button onclick="showToast('عرض ${r.id}')" class="table-action rounded-xl bg-moss px-3 py-2 text-xs font-bold text-white">عرض</button><button onclick="showToast('تحرير ${r.id}')" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">تعديل</button><button onclick="showToast('إصدار PDF')" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">إصدار</button><button onclick="showToast('تم حذف المسودة')" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`).join('')}</tbody></table></div></div>
+    ${listToolbar({ placeholder: 'ابحث برقم التقرير أو المستفيد', filters: statuses, activeFilter, activeSort, sorts: [{ value: 'date', label: 'الأحدث تاريخاً' }, { value: 'progress', label: 'الأعلى تقدماً' }, { value: 'client', label: 'اسم المستفيد' }] })}
+    <div class="mt-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-calm"><div class="overflow-x-auto"><table class="w-full min-w-[760px] text-right"><thead class="bg-moss text-sm text-white"><tr><th class="p-4">رقم التقرير</th><th class="p-4">المستفيد</th><th class="p-4">النوع</th><th class="p-4">التاريخ</th><th class="p-4">التقدم</th><th class="p-4">الحالة</th><th class="p-4">إجراءات CRUD</th></tr></thead><tbody>${visible.map(reportRow).join('')}</tbody></table>${visible.length ? '' : emptyState()}</div></div>
+    ${pagination(pages)}
   `, 'مسار عميق /dashboard/reports');
+}
+
+function reportRow(r) {
+  return `<tr class="border-t border-moss/10"><td class="p-4 font-bold text-moss">${r.id}</td><td class="p-4">${r.client}</td><td class="p-4">${r.type}</td><td class="p-4">${r.date}</td><td class="p-4"><div class="h-2 w-28 rounded-full bg-mint"><div class="progress-wave h-2 rounded-full" style="width:${r.progress}%"></div></div></td><td class="p-4"><span class="rounded-full bg-sand/70 px-3 py-1 text-xs font-bold text-moss">${r.status}</span></td><td class="p-4"><div class="flex gap-2"><button onclick="showToast('عرض ${r.id}')" class="table-action rounded-xl bg-moss px-3 py-2 text-xs font-bold text-white">عرض</button><button onclick="showToast('تحرير ${r.id}')" class="table-action rounded-xl bg-mint px-3 py-2 text-xs font-bold text-moss">تعديل</button><button onclick="showToast('إصدار PDF')" class="table-action rounded-xl bg-sand px-3 py-2 text-xs font-bold text-moss">إصدار</button><button onclick="showToast('تم حذف المسودة')" class="table-action rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">حذف</button></div></td></tr>`;
 }
 
 function bookingPage() {
@@ -315,6 +402,9 @@ function render() {
     const id = Number(base.split('/').pop());
     const c = coaches.find(item => item.id === id) || coaches[0];
     app.innerHTML = shell(c.name, `${c.specialty} · ${c.city} · تقييم ${c.rating}`, `<div class="grid gap-6 lg:grid-cols-2"><div class="rounded-[2rem] bg-white/75 p-6 shadow-calm"><h3 class="font-display text-2xl font-extrabold text-moss">نبذة مهنية</h3><p class="mt-4 leading-8 text-ink/65">مختص بخبرة ${c.experience} سنوات في ${c.badge}. يقدم جلسات فردية وخطط متابعة وتقارير تقدم مختصرة.</p></div><div class="rounded-[2rem] bg-moss p-6 text-white"><h3 class="font-display text-2xl font-extrabold">أقرب موعد</h3><p class="mt-4 text-white/75">${c.next}</p><button onclick="bookCoach(${c.id})" class="mt-6 rounded-2xl bg-white px-5 py-3 font-extrabold text-moss transition hover:-translate-y-1">احجز الآن</button></div></div>`, 'صفحة تفصيلية');
+  } else if (base.startsWith('/programs/')) {
+    const item = programs.find(program => program.id === Number(base.split('/').pop())) || programs[0];
+    app.innerHTML = catalogDetailPage(item, '/programs', 'صفحة عميقة للمنتجات الرقمية', 'إضافة للسلة');
   } else if (base.startsWith('/children-programs/')) {
     const item = childrenPrograms.find(program => program.id === Number(base.split('/').pop())) || childrenPrograms[0];
     app.innerHTML = catalogDetailPage(item, '/children-programs', 'صفحة عميقة لبرامج الأطفال', 'طلب الخطة');
@@ -330,12 +420,14 @@ function render() {
   bindDynamicControls();
 }
 
+const debouncedRender = debounce(() => render());
+
 function bindDynamicControls() {
   document.querySelectorAll('a[data-route]').forEach(link => {
-    link.onclick = (event) => { event.preventDefault(); navigate(link.dataset.route); document.getElementById('navLinks').classList.add('hidden'); };
+    link.onclick = (event) => { event.preventDefault(); navigate(link.dataset.route); document.getElementById('navLinks').classList.add('hidden'); document.getElementById('menuToggle').setAttribute('aria-expanded', 'false'); };
   });
   const searchInput = document.getElementById('searchInput');
-  if (searchInput) searchInput.oninput = (e) => { state.search = e.target.value.trim(); state.page = 1; render(); };
+  if (searchInput) searchInput.oninput = (e) => { state.search = e.target.value.trim(); state.page = 1; debouncedRender(); };
   const filterSelect = document.getElementById('filterSelect');
   if (filterSelect) filterSelect.onchange = (e) => { state.filter = e.target.value; state.page = 1; render(); };
   const sortSelect = document.getElementById('sortSelect');
@@ -359,7 +451,11 @@ window.addEventListener('hashchange', () => {
     render();
   }
 });
-document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('navLinks').classList.toggle('hidden'));
+document.getElementById('menuToggle').addEventListener('click', (event) => {
+  const navLinks = document.getElementById('navLinks');
+  const isHidden = navLinks.classList.toggle('hidden');
+  event.currentTarget.setAttribute('aria-expanded', String(!isHidden));
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   render();
