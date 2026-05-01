@@ -32,7 +32,7 @@ const scrypt = promisify(crypto.scrypt);
 const adminSessions = new Map();
 
 function isLocalDatabaseHost(hostname = '') {
-  return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname);
+  return ['localhost', '127.0.0.1', '::1'].includes(hostname);
 }
 
 function resolveConnectionString() {
