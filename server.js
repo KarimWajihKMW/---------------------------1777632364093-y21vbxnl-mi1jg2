@@ -36,7 +36,9 @@ function isLocalDatabaseHost(hostname = '') {
 }
 
 function resolveConnectionString() {
-  return process.env.DATABASE_URL || process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_PUBLIC_URL || process.env.POSTGRES_URL || process.env.POSTGRESQL_URL || '';
+  return ['DATABASE_URL', 'DATABASE_PRIVATE_URL', 'DATABASE_PUBLIC_URL', 'POSTGRES_URL', 'POSTGRESQL_URL']
+    .map((key) => process.env[key])
+    .find(Boolean) || '';
 }
 
 function createPoolConfig() {

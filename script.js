@@ -15,6 +15,7 @@ const OWNER_AUTH_KEY = 'adrek-owner-authenticated';
 const OWNER_TOKEN_KEY = 'adrek-owner-token';
 const OWNER_USERNAME = 'admin';
 const ADMIN_STATUS_OPTIONS = ['تم التفعيل', 'قريبا'];
+const HERO_CHIP_LABELS = ['ألوان هادئة مريحة', 'تجربة متوافقة مع الجوال', 'حجز وتقارير وحركة حية', 'رحلات علاجية وتطويرية مترابطة'];
 const HOME_MOTION_LABELS = ['استشارات نفسية وأسريـة', 'ألوان متناسقة في كل التبويبات', 'واجهة متحركة ومريحة', 'حجز سريع من الهاتف', 'تقارير احترافية', 'متابعة تقدم حيّة'];
 
 const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -350,7 +351,7 @@ function homePage() {
           <a data-route="/join-provider" href="/join-provider" class="soft-button rounded-2xl border border-moss/15 bg-white/70 px-7 py-4 text-center font-extrabold text-moss">انضم كمزود خدمة</a>
         </div>
         <div class="mt-6 flex flex-wrap gap-3">
-          ${['ألوان هادئة مريحة', 'تجربة متوافقة مع الجوال', 'حجز وتقارير وحركة حية', 'رحلات علاجية وتطويرية مترابطة'].map((label, index) => heroChip(label, index)).join('')}
+          ${HERO_CHIP_LABELS.map((label, index) => heroChip(label, index)).join('')}
         </div>
         <div class="mt-10 grid gap-3 text-center sm:max-w-2xl sm:grid-cols-3">
           ${stat('16K+', 'مستفيد')}${stat('320+', 'مختص معتمد')}${stat('42K+', 'تقرير صادر')}
@@ -429,7 +430,7 @@ function journey(title, meta, value) { return `<div class="rounded-3xl bg-white 
 function pulseCard(title, text) { return `<div class="pulse-card rounded-[1.8rem] border border-white/70 bg-white/70 p-5 shadow-sm"><p class="text-sm font-extrabold text-clay">${title}</p><p class="mt-2 leading-7 text-ink/65">${text}</p></div>`; }
 function motionPill(label) { return `<span class="motion-pill rounded-full border border-moss/10 bg-[#f4efe2] px-4 py-2 text-sm font-extrabold text-moss">${label}</span>`; }
 function experiencePoint(title, text) { return `<div class="rounded-[1.6rem] bg-[#f7f1e4] p-4"><h3 class="font-display text-lg font-extrabold text-moss">${title}</h3><p class="mt-2 text-sm leading-7 text-ink/65">${text}</p></div>`; }
-function floatingInsight(title, text) { return `<div class="floating-insight rounded-[1.9rem] border border-white/70 bg-white/75 p-5 shadow-calm"><span class="inline-flex rounded-full bg-mint px-3 py-1 text-xs font-extrabold text-moss">Insight</span><h3 class="mt-4 font-display text-2xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-8 text-ink/65">${text}</p></div>`; }
+function floatingInsight(title, text) { return `<div class="floating-insight rounded-[1.9rem] border border-white/70 bg-white/75 p-5 shadow-calm"><span class="inline-flex rounded-full bg-mint px-3 py-1 text-xs font-extrabold text-moss">إضاءة</span><h3 class="mt-4 font-display text-2xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-8 text-ink/65">${text}</p></div>`; }
 function feature(icon, title, text, route) { return `<a href="${route}" data-route="${route}" class="card-hover reveal rounded-[2rem] border border-white/70 bg-white/65 p-6 shadow-sm backdrop-blur-xl"><span class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-mint text-2xl">${icon}</span><h3 class="font-display text-xl font-extrabold text-moss">${title}</h3><p class="mt-3 leading-7 text-ink/62">${text}</p></a>`; }
 function step(num, title, text) { return `<div class="rounded-[2rem] border border-white/15 bg-white/10 p-6"><span class="text-sm font-extrabold text-sand">${num}</span><h3 class="mt-3 font-display text-xl font-extrabold">${title}</h3><p class="mt-3 leading-7 text-white/70">${text}</p></div>`; }
 
