@@ -46,14 +46,14 @@ function parseConnectionStringUrl(connectionString) {
   try {
     return new URL(connectionString);
   } catch (error) {
-    throw new Error('Invalid PostgreSQL connection string.');
+    throw new Error(`Invalid PostgreSQL connection string: ${error.message}`);
   }
 }
 
 function resolveSslConfig() {
   const connectionString = resolveConnectionString();
   const connectionUrl = parseConnectionStringUrl(connectionString);
-  const connectionHost = connectionUrl?.hostname || '';
+  const databaseHost = connectionUrl?.hostname || process.env.PGHOST || '';
   const sslMode = String(
     process.env.PGSSLMODE
     || connectionUrl?.searchParams.get('sslmode')
@@ -61,8 +61,7 @@ function resolveSslConfig() {
   ).toLowerCase();
   const sslEnabled = process.env.PGSSL === 'true'
     || ['require', 'verify-ca', 'verify-full'].includes(sslMode)
-    || (connectionHost && !isLocalDatabaseHost(connectionHost))
-    || (process.env.PGHOST && !isLocalDatabaseHost(process.env.PGHOST));
+    || (databaseHost && !isLocalDatabaseHost(databaseHost));
   const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED
     ? process.env.PGSSL_REJECT_UNAUTHORIZED === 'true'
     : ['verify-ca', 'verify-full'].includes(sslMode);
