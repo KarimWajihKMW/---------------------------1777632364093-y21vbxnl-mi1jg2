@@ -62,9 +62,12 @@ function resolveSslConfig() {
   const sslEnabled = process.env.PGSSL === 'true'
     || ['require', 'verify-ca', 'verify-full'].includes(sslMode)
     || (databaseHost && !isLocalDatabaseHost(databaseHost));
-  const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED
-    ? process.env.PGSSL_REJECT_UNAUTHORIZED === 'true'
-    : ['verify-ca', 'verify-full'].includes(sslMode);
+  const rejectUnauthorizedEnv = process.env.PGSSL_REJECT_UNAUTHORIZED;
+  const rejectUnauthorized = rejectUnauthorizedEnv === 'true'
+    ? true
+    : rejectUnauthorizedEnv === 'false'
+      ? false
+      : ['verify-ca', 'verify-full'].includes(sslMode);
   return { connectionString, sslEnabled, rejectUnauthorized };
 }
 
