@@ -216,9 +216,12 @@ async function syncCollectionTable(collectionName, normalizedItems, client = poo
 }
 
 async function ensureCollectionMirror(collectionName, client = pool) {
+  if (!COLLECTION_NAMES.has(collectionName)) {
+    throw new Error(`Unknown collection mirror "${collectionName}".`);
+  }
   const tableName = quoteIdentifier(getCollectionTableName(collectionName));
   const mirrorCountResult = await client.query(`SELECT COUNT(*)::int AS count FROM ${tableName}`);
-  if (mirrorCountResult.rows[0].count) return;
+  if ((mirrorCountResult.rows[0]?.count || 0) > 0) return;
 
   const sourceResult = await client.query(
     `SELECT payload
